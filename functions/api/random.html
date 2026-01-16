@@ -1,0 +1,17 @@
+export async function onRequest({ env }) {
+  const list = await env.ARCHIVE_BUCKET.list();
+  if (!list.objects.length) {
+    return json({ ok:false });
+  }
+  const file = list.objects[Math.floor(Math.random()*list.objects.length)];
+  return json({
+    ok:true,
+    url:`https://${env.R2_PUBLIC}/${encodeURIComponent(file.key)}`
+  });
+}
+
+function json(d){
+  return new Response(JSON.stringify(d),{
+    headers:{ "Content-Type":"application/json" }
+  });
+}

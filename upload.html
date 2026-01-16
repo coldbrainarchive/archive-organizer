@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload to Archive</title>
+<style>
+body{background:#000;color:#fff;font-family:sans-serif;padding:40px}
+input,button{font-size:16px;margin-top:12px}
+</style>
+</head>
+
+<body>
+
+<h2>Upload video to archive</h2>
+<input type="file" id="file" accept="video/*">
+<br>
+<button onclick="upload()">Upload</button>
+<p id="msg"></p>
+
+<script>
+async function upload(){
+  const file=document.getElementById("file").files[0];
+  if(!file) return;
+
+  const buf=await file.arrayBuffer();
+  const res=await fetch("/api/upload",{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/octet-stream",
+      "X-Filename": encodeURIComponent(file.name)
+    },
+    body:buf
+  });
+
+  const json=await res.json();
+  document.getElementById("msg").textContent=json.ok?"Uploaded":"Failed";
+}
+</script>
+
+</body>
+</html>
