@@ -33,7 +33,6 @@ video{
   background:#000;
   z-index:10;
   transition:opacity .4s ease;
-  opacity:1;
 }
 </style>
 </head>
@@ -44,7 +43,7 @@ video{
 <div id="fade"></div>
 
 <script>
-const API = "/api/random";
+const API="/api/random";
 
 /***********************
  * AUDIO STATE
@@ -53,12 +52,21 @@ let audioCtx=null, analyser=null, mediaSource=null;
 let audioReady=false;
 
 /***********************
- * CAMERA (INFINITE FIELD)
+ * CAMERA PHYSICS
  ***********************/
 let camX=0, camY=0;
-let targetCamX=0, targetCamY=0;
+let velX=0, velY=0;
+let zoom=1;
+let targetZoom=1;
+let rotation=0;
+let rotVel=0;
+
+/***********************
+ * INPUT STATE
+ ***********************/
 let dragging=false;
-let lastX=0, lastY=0;
+let lastX=0,lastY=0;
+let gyroX=0,gyroY=0;
 
 /***********************
  * CANVAS
@@ -75,40 +83,59 @@ addEventListener("resize",resize);
 resize();
 
 /***********************
- * PARTICLES
+ * PARTICLES (DEPTH LAYERS)
  ***********************/
+const DEPTHS=[0.4,0.7,1];
 let particles=[];
 let audioLevel=0;
 
 function createParticles(){
-  particles = Array.from({length:90},()=>({
-    x:Math.random()*W*2,
-    y:Math.random()*H*2,
-    r:Math.random()*3+1,
-    vx:(Math.random()-.5)*.4,
-    vy:(Math.random()-.5)*.4,
-    a:Math.random()*.6+.2,
-    exploding:false
-  }));
+  particles=[];
+  for(const d of DEPTHS){
+    for(let i=0;i<30;i++){
+      particles.push({
+        x:Math.random()*W*2,
+        y:Math.random()*H*2,
+        r:(Math.random()*2+1)*d,
+        depth:d,
+        a:Math.random()*.6+.2,
+        vx:(Math.random()-.5)*.3*d,
+        vy:(Math.random()-.5)*.3*d,
+        exploding:false
+      });
+    }
+  }
 }
 createParticles();
 
 /***********************
- * DRAW LOOP (TRUE INFINITE TILE)
+ * DRAW LOOP (INFINITE TILE)
  ***********************/
 function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
 
-  camX += (targetCamX-camX)*0.08;
-  camY += (targetCamY-camY)*0.08;
+  // inertia + decay
+  camX+=velX;
+  camY+=velY;
+  velX*=0.92;
+  velY*=0.92;
 
-  const fw = W * 2;
-  const fh = H * 2;
+  // zoom + rotation smoothing
+  zoom+= (targetZoom-zoom)*0.1;
+  rotation+=rotVel;
+  rotVel*=0.95;
 
-  // draw 3x3 tiled world around camera
-  for(let ox=-1; ox<=1; ox++){
-    for(let oy=-1; oy<=1; oy++){
-      drawTile(ox*fw, oy*fh);
+  ctx.translate(W/2,H/2);
+  ctx.scale(zoom,zoom);
+  ctx.rotate(rotation);
+  ctx.translate(-W/2,-H/2);
+
+  const fw=W*2, fh=H*2;
+
+  for(let ox=-1;ox<=1;ox++){
+    for(let oy=-1;oy<=1;oy++){
+      drawTile(ox*fw,oy*fh);
     }
   }
 
@@ -116,19 +143,19 @@ function draw(){
 }
 draw();
 
-function drawTile(offX, offY){
+function drawTile(offX,offY){
   for(const p of particles){
     p.x+=p.vx;
     p.y+=p.vy;
 
-    const sx = p.x + offX - camX;
-    const sy = p.y + offY - camY;
+    const sx=(p.x+offX-camX*p.depth);
+    const sy=(p.y+offY-camY*p.depth);
 
-    if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
+    if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
-    const pulse = audioLevel*4;
+    const pulse=audioLevel*4*p.depth;
     ctx.beginPath();
-    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
+    ctx.arc(sx,sy,(p.r+pulse),0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
@@ -145,7 +172,7 @@ function unlockAudio(){
 }
 
 /***********************
- * INTERACTION (CAMERA)
+ * POINTER / SCROLL
  ***********************/
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
@@ -156,8 +183,9 @@ canvas.addEventListener("pointerdown",e=>{
 
 addEventListener("pointermove",e=>{
   if(!dragging||playing) return;
-  targetCamX -= (e.clientX-lastX)*0.6;
-  targetCamY -= (e.clientY-lastY)*0.6;
+  velX -= (e.clientX-lastX)*0.04;
+  velY -= (e.clientY-lastY)*0.04;
+  rotVel += (e.clientX-lastX)*0.00002;
   lastX=e.clientX;
   lastY=e.clientY;
 });
@@ -167,9 +195,25 @@ addEventListener("pointercancel",()=>dragging=false);
 
 addEventListener("wheel",e=>{
   if(playing) return;
-  targetCamX+=e.deltaX*0.4;
-  targetCamY+=e.deltaY*0.4;
+  if(e.ctrlKey){
+    targetZoom=Math.min(2,Math.max(0.5,targetZoom-e.deltaY*0.001));
+  }else{
+    velX+=e.deltaX*0.01;
+    velY+=e.deltaY*0.01;
+  }
 },{passive:true});
+
+/***********************
+ * MOBILE GYRO
+ ***********************/
+if(window.DeviceOrientationEvent){
+  window.addEventListener("deviceorientation",e=>{
+    gyroX=(e.gamma||0)*0.03;
+    gyroY=(e.beta||0)*0.03;
+    velX+=gyroX;
+    velY+=gyroY;
+  });
+}
 
 /***********************
  * INTERACTION (PLAY)
@@ -181,9 +225,8 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  const r=canvas.getBoundingClientRect();
-  const x=e.clientX-r.left+camX;
-  const y=e.clientY-r.top+camY;
+  const x=(e.clientX-W/2)/zoom+camX;
+  const y=(e.clientY-H/2)/zoom+camY;
 
   if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
     explode(x,y);
@@ -198,18 +241,9 @@ function explode(cx,cy){
   for(const p of particles){
     const d=Math.hypot(p.x-cx,p.y-cy);
     if(d<140){
-      const f=(1-d/140)*6;
+      const f=(1-d/140)*5;
       p.vx+=(p.x-cx)/d*f||0;
       p.vy+=(p.y-cy)/d*f||0;
-      p.exploding=true;
-
-      const fade=setInterval(()=>{
-        p.a-=0.05;
-        if(p.a<=0){
-          p.a=0;
-          clearInterval(fade);
-        }
-      },16);
     }
   }
 }
@@ -219,62 +253,44 @@ function explode(cx,cy){
  ***********************/
 async function playRandom(){
   playing=true;
-  setTimeout(()=>fade(1),200);
+  fade(1);
 
   const res=await fetch(API);
   const data=await res.json();
   if(!data.ok) return reset();
 
-  setTimeout(()=>playVideo(data.url),420);
+  setTimeout(()=>playVideo(data.url),400);
 }
 
 function playVideo(url){
   const vid=document.createElement("video");
   currentVideo=vid;
-
   vid.src=url;
   vid.muted=true;
   vid.autoplay=true;
   vid.playsInline=true;
-  vid.preload="auto";
-  vid.style.opacity="0";
-  vid.style.pointerEvents="auto";
+  vid.style.opacity=0;
   document.body.appendChild(vid);
 
-  vid.addEventListener("playing",()=>{
-    vid.style.opacity="1";
+  vid.onplaying=()=>{
+    vid.style.opacity=1;
     setTimeout(()=>vid.muted=false,200);
     if(audioReady) attachAudio(vid);
-  });
+  };
 
-  vid.addEventListener("pointerdown",exitVideo);
-  vid.onended=cleanup;
-  vid.onerror=cleanup;
-
-  function cleanup(){
-    audioReady=true;
-    fade(1);
-    vid.style.opacity="0";
-    setTimeout(()=>{ removeVideo(); reset(); },350);
-  }
+  vid.onclick=exitVideo;
+  vid.onended=exitVideo;
 }
 
-/***********************
- * EXIT VIDEO
- ***********************/
 function exitVideo(){
   if(!currentVideo) return;
   fade(1);
-  currentVideo.style.opacity="0";
-  setTimeout(()=>{ removeVideo(); reset(); },350);
-}
-
-function removeVideo(){
-  if(currentVideo){
-    currentVideo.pause();
+  currentVideo.style.opacity=0;
+  setTimeout(()=>{
     currentVideo.remove();
-    currentVideo=null;
-  }
+    audioReady=true;
+    reset();
+  },350);
 }
 
 /***********************
@@ -306,7 +322,9 @@ function reset(){
   fade(0);
   playing=false;
   audioLevel=0;
-  camX=camY=targetCamX=targetCamY=0;
+  camX=camY=velX=velY=0;
+  targetZoom=zoom=1;
+  rotation=rotVel=0;
   createParticles();
 }
 </script>
