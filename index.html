@@ -44,15 +44,19 @@ video{
 const API = "/api/random";
 
 /***********************
- * AUDIO (HARD FIX)
+ * AUDIO (FIXED)
  ***********************/
-let audioCtx, analyser, mediaSource;
+let audioCtx = null;
+let analyser = null;
+let mediaSource = null;
 
 function unlockAudio(){
   if(!audioCtx){
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  audioCtx.resume();
+  if(audioCtx.state !== "running"){
+    audioCtx.resume();
+  }
 }
 
 /***********************
@@ -88,20 +92,43 @@ function createParticles(){
 createParticles();
 
 /***********************
- * DRAW
+ * SHOCKWAVE
+ ***********************/
+let shock=null;
+function shockwave(x,y){
+  shock={x,y,r:0,a:.8};
+}
+
+/***********************
+ * DRAW LOOP
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
+
   for(const p of particles){
-    p.x+=p.vx; p.y+=p.vy;
+    p.x+=p.vx;
+    p.y+=p.vy;
     if(p.x<0)p.x=W;if(p.x>W)p.x=0;
     if(p.y<0)p.y=H;if(p.y>H)p.y=0;
 
+    const pulse = audioLevel*4;
     ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r + audioLevel*4,0,Math.PI*2);
+    ctx.arc(p.x,p.y,p.r+pulse,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
+
+  if(shock){
+    shock.r+=12;
+    shock.a-=.02;
+    ctx.beginPath();
+    ctx.arc(shock.x,shock.y,shock.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(255,255,255,${shock.a})`;
+    ctx.lineWidth=2;
+    ctx.stroke();
+    if(shock.a<=0) shock=null;
+  }
+
   requestAnimationFrame(draw);
 }
 draw();
@@ -111,51 +138,82 @@ draw();
  ***********************/
 let playing=false;
 
-canvas.addEventListener("pointerdown", async e=>{
+canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
-  playing = true;
 
-  unlockAudio(); // MUST be here
+  unlockAudio(); // 🔓 audio context unlocked here
 
-  // 🔥 FETCH FIRST (still inside gesture)
-  const res = await fetch(API);
-  const data = await res.json();
-  if(!data.ok){ reset(); return; }
+  const r=canvas.getBoundingClientRect();
+  const x=e.clientX-r.left;
+  const y=e.clientY-r.top;
 
-  // 🔥 PLAY VIDEO IMMEDIATELY
-  playVideo(data.url);
-
-  // visuals can lag safely
-  setTimeout(()=>fade(1), 250);
+  if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
+    explode(x,y);
+    shockwave(x,y);
+    playRandom();
+  }
 });
 
 /***********************
- * VIDEO + AUDIO (BULLETPROOF)
+ * EXPLOSION
  ***********************/
+function explode(cx,cy){
+  for(const p of particles){
+    const d=Math.hypot(p.x-cx,p.y-cy);
+    if(d<140){
+      const f=(1-d/140)*6;
+      p.vx+=(p.x-cx)/d*f||0;
+      p.vy+=(p.y-cy)/d*f||0;
+      p.a-=.3;
+    }
+  }
+}
+
+/***********************
+ * VIDEO + AUDIO (FIXED)
+ ***********************/
+async function playRandom(){
+  playing=true;
+  fade(1);
+
+  const res=await fetch(API);
+  const data=await res.json();
+  if(!data.ok) return reset();
+
+  setTimeout(()=>playVideo(data.url),450);
+}
+
 function playVideo(url){
   const vid=document.createElement("video");
   vid.src=url;
   vid.muted=true;
+  vid.autoplay=true;
   vid.playsInline=true;
   vid.preload="auto";
   document.body.appendChild(vid);
 
-  // attach audio graph BEFORE play
-  mediaSource = audioCtx.createMediaElementSource(vid);
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 64;
-  mediaSource.connect(analyser);
-  analyser.connect(audioCtx.destination);
+  // 🔥 CRITICAL FIX: attach audio graph immediately
+  if(!mediaSource){
+    mediaSource = audioCtx.createMediaElementSource(vid);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 64;
 
-  vid.play().then(()=>{ vid.muted=false; }).catch(()=>{});
+    mediaSource.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  }
 
-  const arr=new Uint8Array(analyser.frequencyBinCount);
-  (function audioLoop(){
-    if(!playing) return;
-    analyser.getByteFrequencyData(arr);
-    audioLevel = arr.reduce((a,b)=>a+b,0)/arr.length/255;
-    requestAnimationFrame(audioLoop);
-  })();
+  vid.addEventListener("playing",()=>{
+    vid.muted=false;
+
+    const arr = new Uint8Array(analyser.frequencyBinCount);
+    (function audioLoop(){
+      if(!playing) return;
+      analyser.getByteFrequencyData(arr);
+      audioLevel =
+        arr.reduce((a,b)=>a+b,0) / arr.length / 255;
+      requestAnimationFrame(audioLoop);
+    })();
+  });
 
   vid.onended = cleanup;
   vid.onerror = cleanup;
