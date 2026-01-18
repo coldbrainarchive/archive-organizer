@@ -253,12 +253,12 @@ canvas.addEventListener("click", e => {
   const fw = W * 2;
   const fh = H * 2;
 
-  // 🌊 ALWAYS apply gentle water ripple first
+  let hit = false;
+
+  // screen → world position
   const wx = mx + camX;
   const wy = my + camY;
-  ripple(wx, wy);
 
-  // 🎯 THEN check for direct hits
   for(const p of particles){
     if(p.a <= 0) continue;
 
@@ -268,16 +268,23 @@ canvas.addEventListener("click", e => {
     const sy = ry - fh/2 + H/2;
 
     if(Math.hypot(mx - sx, my - sy) <= p.r + 12){
+      hit = true;
+
       if(p.isUpload){
         addShockwave(sx, sy);
         p.a = 0;
         setTimeout(openCamera, 500);
       }else{
-        explode(p.x, p.y); // strong reaction stays
+        explode(p.x, p.y); // strong reaction
         playRandom();
       }
       break;
     }
+  }
+
+  // 🌊 ALWAYS ripple if no direct hit
+  if(!hit){
+    ripple(wx, wy);
   }
 });
 
