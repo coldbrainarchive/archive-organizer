@@ -79,7 +79,7 @@ addEventListener("resize",resize);
 resize();
 
 /***********************
- * PARTICLES (WORLD SPACE)
+ * PARTICLES
  ***********************/
 const DEPTHS=[0.4,0.7,1];
 let particles=[];
@@ -162,7 +162,7 @@ function unlockAudio(){
 }
 
 /***********************
- * CAMERA INPUT (CORRECT DIRECTION)
+ * CAMERA INPUT (CORRECT)
  ***********************/
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
@@ -193,7 +193,7 @@ addEventListener("wheel",e=>{
 },{passive:true});
 
 /***********************
- * CLICK → WORLD (STABLE)
+ * CLICK → WORLD (CORRECT, TILED)
  ***********************/
 let playing=false;
 let currentVideo=null;
@@ -202,17 +202,27 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  // screen → world
-  const wx = (e.clientX - W/2)/zoom + camX;
-  const wy = (e.clientY - H/2)/zoom + camY;
+  const wx=(e.clientX-W/2)/zoom+camX;
+  const wy=(e.clientY-H/2)/zoom+camY;
 
   const fw=W*2, fh=H*2;
-  const tx=((wx%fw)+fw)%fw;
-  const ty=((wy%fh)+fh)%fh;
 
-  const hit = particles.find(p=>{
-    return Math.hypot(tx-p.x,ty-p.y)<=p.r+10;
-  });
+  let hit=null;
+
+  for(const p of particles){
+    for(let ox=-1;ox<=1;ox++){
+      for(let oy=-1;oy<=1;oy++){
+        const px=p.x+ox*fw;
+        const py=p.y+oy*fh;
+        if(Math.hypot(wx-px,wy-py)<=p.r+10){
+          hit={x:p.x,y:p.y};
+          break;
+        }
+      }
+      if(hit) break;
+    }
+    if(hit) break;
+  }
 
   if(hit){
     explode(hit.x,hit.y);
