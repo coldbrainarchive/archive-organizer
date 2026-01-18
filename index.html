@@ -239,17 +239,52 @@ addEventListener("pointerup",()=>dragging=false);
 addEventListener("pointercancel",()=>dragging=false);
 
 /***********************
- * CLICK HANDLING
+ * INTERACTION (TAP + RIPPLE)
  ***********************/
-const uploader=document.getElementById("uploader");
+const uploader = document.getElementById("uploader");
 
-canvas.addEventListener("click",e=>{
-  if(dragging || playing) return;
+let touching = false;
+let touchX = 0;
+let touchY = 0;
+
+canvas.addEventListener("pointerdown", e => {
+  if(playing) return;
   unlockAudio();
 
+  touching = true;
+
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
+  touchX = e.clientX - rect.left;
+  touchY = e.clientY - rect.top;
+
+  handleTap(touchX, touchY);
+});
+
+canvas.addEventListener("pointermove", e => {
+  if(!touching) return;
+
+  const rect = canvas.getBoundingClientRect();
+  touchX = e.clientX - rect.left;
+  touchY = e.clientY - rect.top;
+
+  // 🌊 continuous ripple while finger moves
+  const wx = touchX + camX;
+  const wy = touchY + camY;
+  ripple(wx, wy, 0.35);
+});
+
+canvas.addEventListener("pointerup", () => {
+  touching = false;
+});
+
+canvas.addEventListener("pointercancel", () => {
+  touching = false;
+});
+
+/***********************
+ * TAP RESOLUTION
+ ***********************/
+function handleTap(mx, my){
   const fw = W * 2;
   const fh = H * 2;
 
@@ -268,8 +303,8 @@ canvas.addEventListener("click",e=>{
 
       if(p.isUpload){
         addShockwave(sx, sy);
-        p.a = 0;                       // disappear
-        setTimeout(openCamera, 500);   // delay camera
+        p.a = 0;
+        setTimeout(openCamera, 500);
       }else{
         explode(p.x, p.y);
         playRandom();
@@ -278,13 +313,13 @@ canvas.addEventListener("click",e=>{
     }
   }
 
-  // 🌊 EMPTY SPACE RIPPLE
+  // 🌊 initial ripple if empty space
   if(!hit){
     const wx = mx + camX;
     const wy = my + camY;
-    ripple(wx, wy);
+    ripple(wx, wy, 0.8);
   }
-});
+}
 
 /***********************
  * CAMERA UPLOAD
