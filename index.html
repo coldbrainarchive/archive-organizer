@@ -241,8 +241,6 @@ addEventListener("pointercancel",()=>dragging=false);
 /***********************
  * CLICK HANDLING
  ***********************/
-const uploader=document.getElementById("uploader");
-
 canvas.addEventListener("click",e=>{
   if(dragging||playing) return;
   unlockAudio();
@@ -251,6 +249,8 @@ canvas.addEventListener("click",e=>{
   const mx=e.clientX-rect.left;
   const my=e.clientY-rect.top;
   const fw=W*2, fh=H*2;
+
+  let hit=false; // 👈 NEW
 
   for(const p of particles){
     if(p.a<=0) continue;
@@ -261,6 +261,8 @@ canvas.addEventListener("click",e=>{
     const sy=ry-fh/2+H/2;
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
+      hit=true; // 👈 NEW
+
       if(p.isUpload){
         addShockwave(sx,sy);
         p.a=0;
@@ -271,6 +273,14 @@ canvas.addEventListener("click",e=>{
       }
       break;
     }
+  }
+
+  // 🌊 EMPTY SPACE RIPPLE
+  if(!hit){
+    // convert screen → world position
+    const wx = mx + camX;
+    const wy = my + camY;
+    explode(wx, wy);
   }
 });
 
