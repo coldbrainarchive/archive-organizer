@@ -86,7 +86,7 @@ const DEPTHS=[0.4,0.7,1];
 let particles=[];
 let audioLevel=0;
 
-// 🔑 SCREEN-SPACE HIT REGISTRY
+// 🔑 ALL ACTIVE HIT BOXES (SCREEN SPACE)
 let hitTargets=[];
 
 function createParticles(){
@@ -149,17 +149,18 @@ function drawTile(offX,offY){
     const sx=(p.x+offX-camX*p.depth);
     const sy=(p.y+offY-camY*p.depth);
 
-    if(sx<-120||sx>W+120||sy<-120||sy>H+120) continue;
-
     const pulse=audioLevel*4*p.depth;
     const rr=p.r+pulse;
 
-    ctx.beginPath();
-    ctx.arc(sx,sy,rr,0,Math.PI*2);
-    ctx.fillStyle=`rgba(255,255,255,${p.a})`;
-    ctx.fill();
+    // draw only if near viewport
+    if(!(sx<-120||sx>W+120||sy<-120||sy>H+120)){
+      ctx.beginPath();
+      ctx.arc(sx,sy,rr,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${p.a})`;
+      ctx.fill();
+    }
 
-    // 🔑 REGISTER SCREEN-SPACE HITBOX
+    // 🔑 ALWAYS REGISTER HITBOX
     hitTargets.push({
       x:sx,
       y:sy,
