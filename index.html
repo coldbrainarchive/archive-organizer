@@ -77,7 +77,7 @@ resize();
 /***********************
  * PARTICLES (DEPTH)
  ***********************/
-const DEPTHS=[0.5,0.75,1];
+const DEPTHS=[0.5,0.75,1]; // far → near
 let particles=[];
 let audioLevel=0;
 
@@ -186,7 +186,7 @@ addEventListener("wheel",e=>{
 },{passive:true});
 
 /***********************
- * PARTICLE CLICK
+ * CLICK → WORLD (UNCHANGED, SAFE)
  ***********************/
 let playing=false;
 let currentVideo=null;
@@ -225,7 +225,7 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO FLOW (CLICK TO EXIT RESTORED)
+ * VIDEO FLOW
  ***********************/
 async function playRandom(){
   playing=true;
@@ -241,39 +241,28 @@ async function playRandom(){
 function playVideo(url){
   const vid=document.createElement("video");
   currentVideo=vid;
-
   vid.src=url;
   vid.muted=true;
   vid.autoplay=true;
   vid.playsInline=true;
   vid.style.opacity=0;
-  vid.style.pointerEvents="auto";
   document.body.appendChild(vid);
 
-  vid.addEventListener("playing",()=>{
+  vid.onplaying=()=>{
     vid.style.opacity=1;
     setTimeout(()=>vid.muted=false,200);
     if(audioReady) attachAudio(vid);
-  });
+  };
 
-  // ✅ CLICK / TAP VIDEO TO EXIT
-  vid.addEventListener("pointerdown", exitVideo);
+  vid.onended=cleanup;
+  vid.onerror=cleanup;
 
-  vid.onended=exitVideo;
-  vid.onerror=exitVideo;
-}
-
-function exitVideo(){
-  if(!currentVideo) return;
-  fade(1);
-  currentVideo.style.opacity=0;
-  setTimeout(()=>{
-    currentVideo.pause();
-    currentVideo.remove();
-    currentVideo=null;
+  function cleanup(){
     audioReady=true;
-    reset();
-  },350);
+    fade(1);
+    vid.style.opacity=0;
+    setTimeout(()=>{vid.remove();reset();},350);
+  }
 }
 
 /***********************
