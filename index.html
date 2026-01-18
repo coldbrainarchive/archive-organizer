@@ -196,7 +196,7 @@ function draw(){
       ctx.lineWidth = 1.2 + p.depth*1.2;
       ctx.stroke();
     }else{
-      ctx.fillStyle=rgba(255,255,255,${p.a});
+      ctx.fillStyle=`rgba(255,255,255,${p.a})`;
       ctx.fill();
     }
     ctx.shadowBlur = 0;
@@ -215,7 +215,7 @@ function draw(){
 
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.strokeStyle=rgba(0,255,255,${s.alpha});
+    ctx.strokeStyle=`rgba(0,255,255,${s.alpha})`;
     ctx.lineWidth=2;
     ctx.shadowBlur=30;
     ctx.shadowColor="rgba(0,255,255,0.9)";
