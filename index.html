@@ -253,11 +253,12 @@ canvas.addEventListener("click", e => {
   const fw = W * 2;
   const fh = H * 2;
 
-  let hit = false;
+  // 🌊 ALWAYS apply gentle water ripple first
+  const wx = mx + camX;
+  const wy = my + camY;
+  ripple(wx, wy);
 
-  // ─────────────────────────
-  // 1️⃣ DIRECT PARTICLE HIT
-  // ─────────────────────────
+  // 🎯 THEN check for direct hits
   for(const p of particles){
     if(p.a <= 0) continue;
 
@@ -267,27 +268,16 @@ canvas.addEventListener("click", e => {
     const sy = ry - fh/2 + H/2;
 
     if(Math.hypot(mx - sx, my - sy) <= p.r + 12){
-      hit = true;
-
       if(p.isUpload){
         addShockwave(sx, sy);
         p.a = 0;
         setTimeout(openCamera, 500);
       }else{
-        explode(p.x, p.y);
+        explode(p.x, p.y); // strong reaction stays
         playRandom();
       }
       break;
     }
-  }
-
-  // ─────────────────────────
-  // 2️⃣ WATER RIPPLE (MISS)
-  // ─────────────────────────
-  if(!hit){
-    const wx = mx + camX;
-    const wy = my + camY;
-    ripple(wx, wy);
   }
 });
 
