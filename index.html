@@ -179,7 +179,7 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
- * DRAW LOOP — TRUE BLOOM ×2
+ * DRAW LOOP — TRUE BLOOM ×3 (EXPANDED)
  ***********************/
 function draw(){
   ctx.clearRect(0, 0, W, H);
@@ -217,65 +217,73 @@ function draw(){
     const sx = rx - fw/2 + W/2;
     const sy = ry - fh/2 + H/2;
 
-    if(sx < -300 || sx > W + 300 || sy < -300 || sy > H + 300) continue;
+    if(sx < -450 || sx > W + 450 || sy < -450 || sy > H + 450) continue;
 
     /* ─────────────────────────────
-       ✨ LIFE / BLOOM ENERGY UPDATE
+       ✨ LIFE / BLOOM ENERGY
     ───────────────────────────── */
     p.pulse += p.pulseSpeed;
 
     if(Math.random() < p.flareChance){
-      p.flare = 2 + Math.random() * 4;
+      p.flare = 3 + Math.random() * 5;
     }
     p.flare *= p.flareDecay;
 
     const life =
       1 +
       Math.sin(p.pulse) * p.pulseStrength +
-      p.flare * 8;
+      p.flare * 10;
 
-    const depthBoost = 0.7 + p.depth * 1.6;
+    const depthBoost = 0.6 + p.depth * 1.8;
 
-    // 🔥🔥 DOUBLE ENERGY
-    const glow = p.glowBoost * life * depthBoost * 2;
+    // 🚀 BLOOM ENERGY (pushed harder)
+    const glow = p.glowBoost * life * depthBoost * 2.4;
 
     /* ─────────────────────────────
-       🌈 BLOOM PASSES (×2 STACK)
+       🌫️ BLOOM PASSES (EXPANDED)
     ───────────────────────────── */
 
-    // 0️⃣ MASSIVE ATMOSPHERIC BLOOM (NEW)
-    ctx.shadowBlur = glow * 3.8;
-    ctx.shadowColor = "rgba(255,255,255,0.08)";
+    // 0️⃣ VOLUMETRIC FOG LIGHT (NEW — very far reach)
+    ctx.shadowBlur = glow * 5.5;
+    ctx.shadowColor = "rgba(255,255,255,0.06)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.4, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.015)";
+    ctx.arc(sx, sy, p.r * 3.6, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.01)";
     ctx.fill();
 
-    // 1️⃣ FAR AURA (huge soft halo)
-    ctx.shadowBlur = glow * 2.6;
-    ctx.shadowColor = "rgba(255,255,255,0.18)";
+    // 1️⃣ MASSIVE ATMOSPHERIC BLOOM
+    ctx.shadowBlur = glow * 4.2;
+    ctx.shadowColor = "rgba(255,255,255,0.12)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.9, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    ctx.arc(sx, sy, p.r * 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.02)";
     ctx.fill();
 
-    // 2️⃣ MID HALO
-    ctx.shadowBlur = glow * 1.6;
-    ctx.shadowColor = "rgba(255,255,255,0.45)";
+    // 2️⃣ FAR AURA
+    ctx.shadowBlur = glow * 3.0;
+    ctx.shadowColor = "rgba(255,255,255,0.22)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.4, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.1)";
+    ctx.arc(sx, sy, p.r * 2.1, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.045)";
     ctx.fill();
 
-    // 3️⃣ CORE LIGHT
-    ctx.shadowBlur = glow * 0.8;
+    // 3️⃣ MID HALO
+    ctx.shadowBlur = glow * 1.9;
+    ctx.shadowColor = "rgba(255,255,255,0.5)";
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r * 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fill();
+
+    // 4️⃣ CORE LIGHT
+    ctx.shadowBlur = glow * 0.9;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.05, 0, Math.PI * 2);
+    ctx.arc(sx, sy, p.r * 1.1, 0, Math.PI * 2);
 
     if(p.isUpload){
       ctx.strokeStyle = "rgba(255,255,255,1)";
-      ctx.lineWidth = 2.2 + p.depth * 1.6;
+      ctx.lineWidth = 2.4 + p.depth * 1.8;
       ctx.stroke();
     }else{
       ctx.fillStyle = `rgba(255,255,255,${p.a})`;
@@ -286,7 +294,7 @@ function draw(){
   }
 
   /* ─────────────────────────────
-     💥 SHOCKWAVES (OVERDRIVEN)
+     💥 SHOCKWAVES (SPACE-FILLING)
   ───────────────────────────── */
   for(let i = shockwaves.length - 1; i >= 0; i--){
     const s = shockwaves[i];
@@ -298,12 +306,12 @@ function draw(){
       continue;
     }
 
-    ctx.shadowBlur = 120;
+    ctx.shadowBlur = 160;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(255,255,255,${s.alpha})`;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.shadowBlur = 0;
   }
