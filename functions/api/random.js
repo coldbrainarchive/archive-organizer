@@ -15,7 +15,7 @@ export async function onRequest(context) {
   return json({
     ok: true,
     key: file.key,
-    url: `https://pub-f7c8d1cb51b44748a4cad84d525b6c0c.r2.dev/${encodeURIComponent(file.key)}`
+    url: https://pub-f7c8d1cb51b44748a4cad84d525b6c0c.r2.dev/${encodeURIComponent(file.key)}
   });
 }
 
