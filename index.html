@@ -107,26 +107,49 @@ function createParticles(){
         : (Math.random() * 2 + 1);
 
       particles.push({
+        // position
         x: Math.random() * W * 2,
         y: Math.random() * H * 2,
+
+        // depth & size
         depth: d,
         r: baseRadius * d,
+
+        // motion
         vx: (Math.random() - 0.5) * 0.25 * d,
         vy: (Math.random() - 0.5) * 0.25 * d,
+
+        // base opacity
         a: isUpload ? 1 : 0.12 + d * 0.65,
         isUpload,
 
-        // ✨ STRONGER LIFE + GLOW DATA (visual only)
+        /* ─────────────────────────────
+           ✨ LIFE / GLOW SYSTEM (VISUAL)
+        ───────────────────────────── */
+
+        // breathing phase
         pulse: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.008 + Math.random() * 0.012,   // much faster breathing
-        pulseStrength: 0.6 + Math.random() * 1.2,    // much brighter swings
-        glowBoost: 8 + Math.random() * 18             // extra glow headroom
+
+        // slow, organic breathing
+        pulseSpeed: 0.0015 + Math.random() * 0.0025,
+
+        // how much brightness swings
+        pulseStrength: 1.8 + Math.random() * 2.8,
+
+        // raw glow power
+        glowBoost: 20 + Math.random() * 40,
+
+        /* ─────────────────────────────
+           🌟 RARE FLARE SYSTEM
+        ───────────────────────────── */
+
+        flare: 0,                                   // current flare strength
+        flareChance: 0.0008 + Math.random() * 0.0015, // how often it spikes
+        flareDecay: 0.92 + Math.random() * 0.04       // fade speed
       });
     }
   }
 }
-
-createParticles();
 
 createParticles();
 
