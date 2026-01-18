@@ -33,7 +33,6 @@ video{
   background:#000;
   z-index:10;
   transition:opacity .4s ease;
-  opacity:1;
 }
 </style>
 </head>
@@ -53,7 +52,7 @@ let audioCtx=null, analyser=null, mediaSource=null;
 let audioReady=false;
 
 /***********************
- * CAMERA (WORLD SPACE)
+ * CAMERA
  ***********************/
 let camX=0, camY=0;
 let targetCamX=0, targetCamY=0;
@@ -186,7 +185,7 @@ addEventListener("wheel",e=>{
 },{passive:true});
 
 /***********************
- * PARTICLE CLICK
+ * CLICK — DEPTH-CORRECT ✅
  ***********************/
 let playing=false;
 let currentVideo=null;
@@ -195,16 +194,25 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  const r=canvas.getBoundingClientRect();
-  const x=e.clientX-r.left+camX;
-  const y=e.clientY-r.top +camY;
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left;
+  const my=e.clientY-rect.top;
 
-  const hit = particles.find(p=>{
-    return Math.hypot(x-p.x,y-p.y)<=p.r+10;
-  });
+  let hit=null;
+
+  for(const p of particles){
+    const sx=p.x-camX*p.depth;
+    const sy=p.y-camY*p.depth;
+    const rr=p.r+10;
+
+    if(Math.hypot(mx-sx,my-sy)<=rr){
+      hit=p;
+      break;
+    }
+  }
 
   if(hit){
-    explode(x,y);
+    explode(hit.x,hit.y);
     playRandom();
   }
 });
@@ -225,7 +233,7 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO FLOW (CLICK TO EXIT RESTORED)
+ * VIDEO FLOW
  ***********************/
 async function playRandom(){
   playing=true;
@@ -256,9 +264,7 @@ function playVideo(url){
     if(audioReady) attachAudio(vid);
   });
 
-  // ✅ CLICK / TAP VIDEO TO EXIT
   vid.addEventListener("pointerdown", exitVideo);
-
   vid.onended=exitVideo;
   vid.onerror=exitVideo;
 }
