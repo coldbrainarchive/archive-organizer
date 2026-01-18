@@ -32,7 +32,6 @@ video{
   object-fit:cover;
   background:#000;
   z-index:10;
-  pointer-events:none;
   transition:opacity .4s ease;
   opacity:1;
 }
@@ -155,11 +154,11 @@ function explode(cx,cy){
       p.vy+=(p.y-cy)/d*f||0;
       p.exploding=true;
 
-      const fade=setInterval(()=>{
+      const fadeOut=setInterval(()=>{
         p.a-=0.05;
         if(p.a<=0){
           p.a=0;
-          clearInterval(fade);
+          clearInterval(fadeOut);
         }
       },16);
     }
@@ -203,26 +202,32 @@ function playVideo(url){
     }
   });
 
-  // tap video to exit
+  // tap video to exit early
   vid.addEventListener("pointerdown", exitVideo);
 
-  vid.onended=cleanup;
-  vid.onerror=cleanup;
+  // ✅ FIX: natural end behaves the SAME as exit tap
+  vid.onended = cleanup;
+  vid.onerror = cleanup;
 
   function cleanup(){
-    audioReady=true;
-    removeVideo();
+    audioReady = true;
+    fade(1);
+    vid.style.opacity="0";
+
+    setTimeout(()=>{
+      removeVideo();
+      reset();
+    },350);
   }
 }
 
 /***********************
- * EXIT VIDEO
+ * EXIT VIDEO (tap)
  ***********************/
 function exitVideo(){
   if(!currentVideo) return;
 
-  fade(1); // soften transition
-
+  fade(1);
   currentVideo.style.opacity="0";
 
   setTimeout(()=>{
@@ -264,7 +269,9 @@ function attachAudio(video){
 /***********************
  * HELPERS
  ***********************/
-function fade(v){ document.getElementById("fade").style.opacity=v; }
+function fade(v){
+  document.getElementById("fade").style.opacity=v;
+}
 
 function reset(){
   fade(0);
