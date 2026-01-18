@@ -46,13 +46,13 @@ video{
 const API="/api/random";
 
 /***********************
- * AUDIO STATE
+ * AUDIO
  ***********************/
 let audioCtx=null, analyser=null, mediaSource=null;
 let audioReady=false;
 
 /***********************
- * CAMERA PHYSICS
+ * CAMERA
  ***********************/
 let camX=0, camY=0;
 let velX=0, velY=0;
@@ -86,9 +86,6 @@ const DEPTHS=[0.4,0.7,1];
 let particles=[];
 let audioLevel=0;
 
-// 🔑 ALL ACTIVE HIT BOXES (SCREEN SPACE)
-let hitTargets=[];
-
 function createParticles(){
   particles=[];
   for(const d of DEPTHS){
@@ -99,8 +96,8 @@ function createParticles(){
         r:(Math.random()*2+1)*d,
         depth:d,
         a:Math.random()*.6+.2,
-        vx:(Math.random()-.5)*0.08*d,
-        vy:(Math.random()-.5)*0.08*d
+        vx:(Math.random()-.5)*0.06*d,
+        vy:(Math.random()-.5)*0.06*d
       });
     }
   }
@@ -113,7 +110,6 @@ createParticles();
 function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
-  hitTargets.length = 0;
 
   camX+=velX;
   camY+=velY;
@@ -149,25 +145,13 @@ function drawTile(offX,offY){
     const sx=(p.x+offX-camX*p.depth);
     const sy=(p.y+offY-camY*p.depth);
 
+    if(sx<-120||sx>W+120||sy<-120||sy>H+120) continue;
+
     const pulse=audioLevel*4*p.depth;
-    const rr=p.r+pulse;
-
-    // draw only if near viewport
-    if(!(sx<-120||sx>W+120||sy<-120||sy>H+120)){
-      ctx.beginPath();
-      ctx.arc(sx,sy,rr,0,Math.PI*2);
-      ctx.fillStyle=`rgba(255,255,255,${p.a})`;
-      ctx.fill();
-    }
-
-    // 🔑 ALWAYS REGISTER HITBOX
-    hitTargets.push({
-      x:sx,
-      y:sy,
-      r:rr,
-      wx:p.x+offX,
-      wy:p.y+offY
-    });
+    ctx.beginPath();
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${p.a})`;
+    ctx.fill();
   }
 }
 
@@ -182,7 +166,7 @@ function unlockAudio(){
 }
 
 /***********************
- * CAMERA INPUT
+ * CAMERA INPUT (FIXED DIRECTION)
  ***********************/
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
@@ -193,8 +177,8 @@ canvas.addEventListener("pointerdown",e=>{
 
 addEventListener("pointermove",e=>{
   if(!dragging||playing) return;
-  velX -= (e.clientX-lastX)*0.03;
-  velY -= (e.clientY-lastY)*0.03;
+  velX += (e.clientX-lastX)*0.03;
+  velY += (e.clientY-lastY)*0.03;
   rotVel += (e.clientX-lastX)*0.000015;
   lastX=e.clientX;
   lastY=e.clientY;
@@ -208,13 +192,13 @@ addEventListener("wheel",e=>{
   if(e.ctrlKey){
     targetZoom=Math.min(2,Math.max(0.6,targetZoom-e.deltaY*0.001));
   }else{
-    velX+=e.deltaX*0.008;
-    velY+=e.deltaY*0.008;
+    velX += e.deltaX*0.01;
+    velY += e.deltaY*0.01;
   }
 },{passive:true});
 
 /***********************
- * INTERACTION (PLAY)
+ * CLICK → WORLD (THE FIX)
  ***********************/
 let playing=false;
 let currentVideo=null;
@@ -223,15 +207,29 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  const mx=e.clientX;
-  const my=e.clientY;
+  // screen → centered
+  let x = (e.clientX - W/2) / zoom;
+  let y = (e.clientY - H/2) / zoom;
 
-  const hit = hitTargets.find(h=>{
-    return Math.hypot(mx-h.x,my-h.y)<=h.r+6;
+  // undo rotation
+  const cr=Math.cos(-rotation), sr=Math.sin(-rotation);
+  const rx = x*cr - y*sr;
+  const ry = x*sr + y*cr;
+
+  // world coords
+  let wx = rx + camX;
+  let wy = ry + camY;
+
+  const fw=W*2, fh=H*2;
+  wx=((wx%fw)+fw)%fw;
+  wy=((wy%fh)+fh)%fh;
+
+  const hit = particles.find(p=>{
+    return Math.hypot(wx-p.x,wy-p.y)<=p.r+10;
   });
 
   if(hit){
-    explode(hit.wx,hit.wy);
+    explode(hit.x,hit.y);
     playRandom();
   }
 });
