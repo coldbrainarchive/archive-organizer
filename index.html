@@ -44,6 +44,21 @@ video{
 const API = "/api/random";
 
 /***********************
+ * AUDIO UNLOCK (CRITICAL)
+ ***********************/
+let audioCtx = null;
+let analyser = null;
+
+function unlockAudio(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state !== "running"){
+    audioCtx.resume();
+  }
+}
+
+/***********************
  * CANVAS
  ***********************/
 const canvas = document.getElementById("c");
@@ -84,7 +99,7 @@ function shockwave(x,y){
 }
 
 /***********************
- * DRAW LOOP (SAFE)
+ * DRAW LOOP
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
@@ -124,6 +139,9 @@ let playing=false;
 
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
+
+  unlockAudio(); // 🔓 REQUIRED FOR SOUND
+
   const r=canvas.getBoundingClientRect();
   const x=e.clientX-r.left;
   const y=e.clientY-r.top;
@@ -151,10 +169,8 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO + AUDIO (SAFE)
+ * VIDEO + AUDIO
  ***********************/
-let analyser=null;
-
 async function playRandom(){
   playing=true;
   fade(1);
@@ -163,7 +179,8 @@ async function playRandom(){
   const data=await res.json();
   if(!data.ok) return reset();
 
-  setTimeout(()=>playVideo(data.url),400);
+  // let the explosion + shockwave play
+  setTimeout(()=>playVideo(data.url),450);
 }
 
 function playVideo(url){
@@ -172,32 +189,35 @@ function playVideo(url){
   vid.muted=true;
   vid.autoplay=true;
   vid.playsInline=true;
+  vid.preload="auto";
   document.body.appendChild(vid);
 
   vid.addEventListener("playing",()=>{
     vid.muted=false;
 
-    // SAFE AudioContext (inside user action chain)
     try{
-      const ac=new AudioContext();
-      const src=ac.createMediaElementSource(vid);
-      analyser=ac.createAnalyser();
-      analyser.fftSize=64;
-      src.connect(analyser);
-      analyser.connect(ac.destination);
+      const src = audioCtx.createMediaElementSource(vid);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
 
-      const arr=new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
+      analyser.connect(audioCtx.destination);
+
+      const arr = new Uint8Array(analyser.frequencyBinCount);
       (function audioLoop(){
         if(!playing) return;
         analyser.getByteFrequencyData(arr);
-        audioLevel=arr.reduce((a,b)=>a+b,0)/arr.length/255;
+        audioLevel =
+          arr.reduce((a,b)=>a+b,0) / arr.length / 255;
         requestAnimationFrame(audioLoop);
       })();
-    }catch{}
+    }catch(e){
+      console.warn("Audio failed:", e);
+    }
   });
 
-  vid.onended=cleanup;
-  vid.onerror=cleanup;
+  vid.onended = cleanup;
+  vid.onerror = cleanup;
 
   function cleanup(){
     vid.remove();
