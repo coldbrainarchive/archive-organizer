@@ -94,6 +94,31 @@ function createParticles(){
 createParticles();
 
 /***********************
+ * CAMERA WRAP (🔥 FIX)
+ ***********************/
+function wrapCamera(){
+  const fw = W * 2;
+  const fh = H * 2;
+
+  if(camX < 0){
+    camX += fw;
+    targetCamX += fw;
+  }
+  if(camX > fw){
+    camX -= fw;
+    targetCamX -= fw;
+  }
+  if(camY < 0){
+    camY += fh;
+    targetCamY += fh;
+  }
+  if(camY > fh){
+    camY -= fh;
+    targetCamY -= fh;
+  }
+}
+
+/***********************
  * DRAW LOOP
  ***********************/
 function draw(){
@@ -101,6 +126,8 @@ function draw(){
 
   camX += (targetCamX-camX)*0.08;
   camY += (targetCamY-camY)*0.08;
+
+  wrapCamera(); // ✅ infinite scroll fix
 
   for(const p of particles){
     p.x+=p.vx;
