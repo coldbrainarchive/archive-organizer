@@ -239,7 +239,7 @@ addEventListener("pointerup",()=>dragging=false);
 addEventListener("pointercancel",()=>dragging=false);
 
 /***********************
- * CLICK HANDLING
+ * CLICK HANDLING + WATER RIPPLE
  ***********************/
 const uploader = document.getElementById("uploader");
 
@@ -255,10 +255,9 @@ canvas.addEventListener("click", e => {
 
   let hit = false;
 
-  // screen → world position
-  const wx = mx + camX;
-  const wy = my + camY;
-
+  // ─────────────────────────
+  // 1️⃣ DIRECT PARTICLE HIT
+  // ─────────────────────────
   for(const p of particles){
     if(p.a <= 0) continue;
 
@@ -275,18 +274,52 @@ canvas.addEventListener("click", e => {
         p.a = 0;
         setTimeout(openCamera, 500);
       }else{
-        explode(p.x, p.y); // strong reaction
+        explode(p.x, p.y);
         playRandom();
       }
       break;
     }
   }
 
-  // 🌊 ALWAYS ripple if no direct hit
+  // ─────────────────────────
+  // 2️⃣ WATER RIPPLE (EMPTY SPACE OR NEAR MISS)
+  // ─────────────────────────
   if(!hit){
-    ripple(wx, wy);
+    ripple(mx, my);
   }
 });
+
+/***********************
+ * WATER RIPPLE FUNCTION
+ ***********************/
+function ripple(mx, my){
+  const RADIUS   = 160;  // ripple reach
+  const STRENGTH = 0.6;  // softness
+  const fw = W * 2;
+  const fh = H * 2;
+
+  for(const p of particles){
+    if(p.a <= 0) continue;
+
+    // particle → screen space
+    const rx = mod(p.x - camX * p.depth, fw);
+    const ry = mod(p.y - camY * p.depth, fh);
+    const sx = rx - fw/2 + W/2;
+    const sy = ry - fh/2 + H/2;
+
+    const dx = sx - mx;
+    const dy = sy - my;
+    const d  = Math.hypot(dx, dy);
+
+    if(d > 0 && d < RADIUS){
+      const force = (1 - d / RADIUS) * STRENGTH;
+
+      // gentle push away from finger
+      p.vx += (dx / d) * force * p.depth;
+      p.vy += (dy / d) * force * p.depth;
+    }
+  }
+}
 
 /***********************
  * CAMERA UPLOAD
