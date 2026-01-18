@@ -179,7 +179,7 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
- * DRAW LOOP — TRUE BLOOM ×3 (EXPANDED)
+ * DRAW LOOP — TRUE BLOOM ×3 (BREATHING)
  ***********************/
 function draw(){
   ctx.clearRect(0, 0, W, H);
@@ -194,6 +194,11 @@ function draw(){
 
   const fw = W * 2;
   const fh = H * 2;
+
+  // 🌬 GLOBAL BREATH (slow, cinematic)
+  const time = performance.now();
+  const globalBreath =
+    0.85 + Math.sin(time * 0.00018) * 0.15;
 
   // 🔥 ADDITIVE LIGHT MODE
   ctx.globalCompositeOperation = "lighter";
@@ -220,7 +225,7 @@ function draw(){
     if(sx < -450 || sx > W + 450 || sy < -450 || sy > H + 450) continue;
 
     /* ─────────────────────────────
-       ✨ LIFE / BLOOM ENERGY
+       ✨ LIFE / BREATH ENERGY
     ───────────────────────────── */
     p.pulse += p.pulseSpeed;
 
@@ -236,57 +241,72 @@ function draw(){
 
     const depthBoost = 0.6 + p.depth * 1.8;
 
-    // 🚀 BLOOM ENERGY (pushed harder)
-    const glow = p.glowBoost * life * depthBoost * 2.4;
+    // 🌗 EXPOSURE — THIS IS THE BREATH
+    const exposure = Math.max(
+      0.25,
+      Math.min(1.6, life * 0.55)
+    );
+
+    // 🚀 BLOOM ENERGY (modulated by breath)
+    const glow =
+      p.glowBoost *
+      life *
+      depthBoost *
+      2.4 *
+      globalBreath;
+
+    // 🫁 SUBTLE SIZE BREATH
+    const sizeBreath =
+      1 + Math.sin(p.pulse * 0.9) * 0.06;
 
     /* ─────────────────────────────
-       🌫️ BLOOM PASSES (EXPANDED)
+       🌫️ BLOOM PASSES (BREATHING)
     ───────────────────────────── */
 
-    // 0️⃣ VOLUMETRIC FOG LIGHT (NEW — very far reach)
+    // 0️⃣ VOLUMETRIC FOG
     ctx.shadowBlur = glow * 5.5;
-    ctx.shadowColor = "rgba(255,255,255,0.06)";
+    ctx.shadowColor = `rgba(255,255,255,${0.06 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 3.6, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.01)";
+    ctx.arc(sx, sy, p.r * 3.6 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.01 * exposure})`;
     ctx.fill();
 
     // 1️⃣ MASSIVE ATMOSPHERIC BLOOM
     ctx.shadowBlur = glow * 4.2;
-    ctx.shadowColor = "rgba(255,255,255,0.12)";
+    ctx.shadowColor = `rgba(255,255,255,${0.12 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.8, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.02)";
+    ctx.arc(sx, sy, p.r * 2.8 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.02 * exposure})`;
     ctx.fill();
 
     // 2️⃣ FAR AURA
     ctx.shadowBlur = glow * 3.0;
-    ctx.shadowColor = "rgba(255,255,255,0.22)";
+    ctx.shadowColor = `rgba(255,255,255,${0.22 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.1, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.045)";
+    ctx.arc(sx, sy, p.r * 2.1 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.045 * exposure})`;
     ctx.fill();
 
     // 3️⃣ MID HALO
     ctx.shadowBlur = glow * 1.9;
-    ctx.shadowColor = "rgba(255,255,255,0.5)";
+    ctx.shadowColor = `rgba(255,255,255,${0.5 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.5, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.arc(sx, sy, p.r * 1.5 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.12 * exposure})`;
     ctx.fill();
 
     // 4️⃣ CORE LIGHT
     ctx.shadowBlur = glow * 0.9;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.1, 0, Math.PI * 2);
+    ctx.arc(sx, sy, p.r * 1.1 * sizeBreath, 0, Math.PI * 2);
 
     if(p.isUpload){
       ctx.strokeStyle = "rgba(255,255,255,1)";
       ctx.lineWidth = 2.4 + p.depth * 1.8;
       ctx.stroke();
     }else{
-      ctx.fillStyle = `rgba(255,255,255,${p.a})`;
+      ctx.fillStyle = `rgba(255,255,255,${p.a * exposure})`;
       ctx.fill();
     }
 
@@ -294,7 +314,7 @@ function draw(){
   }
 
   /* ─────────────────────────────
-     💥 SHOCKWAVES (SPACE-FILLING)
+     💥 SHOCKWAVES (UNCHANGED)
   ───────────────────────────── */
   for(let i = shockwaves.length - 1; i >= 0; i--){
     const s = shockwaves[i];
