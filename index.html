@@ -1,3 +1,48 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archive</title>
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
+canvas{ position:fixed; inset:0; }
+
+#fade{
+  position:fixed;
+  inset:0;
+  background:#000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .45s ease;
+  z-index:5;
+}
+
+video{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:#000;
+  z-index:10;
+  transition:opacity .4s ease;
+  opacity:1;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="c"></canvas>
+<div id="fade"></div>
+
 <script>
 const API = "/api/random";
 
@@ -49,7 +94,32 @@ function createParticles(){
 createParticles();
 
 /***********************
- * DRAW LOOP (SEAMLESS)
+ * CAMERA WRAP (🔥 FIX)
+ ***********************/
+function wrapCamera(){
+  const fw = W * 2;
+  const fh = H * 2;
+
+  if(camX < 0){
+    camX += fw;
+    targetCamX += fw;
+  }
+  if(camX > fw){
+    camX -= fw;
+    targetCamX -= fw;
+  }
+  if(camY < 0){
+    camY += fh;
+    targetCamY += fh;
+  }
+  if(camY > fh){
+    camY -= fh;
+    targetCamY -= fh;
+  }
+}
+
+/***********************
+ * DRAW LOOP
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
@@ -57,34 +127,34 @@ function draw(){
   camX += (targetCamX-camX)*0.08;
   camY += (targetCamY-camY)*0.08;
 
-  const fw = W * 2;
-  const fh = H * 2;
+  wrapCamera(); // ✅ infinite scroll fix
 
-  // draw 3x3 tiled world (NO DEAD ZONES)
-  for(let ox=-1; ox<=1; ox++){
-    for(let oy=-1; oy<=1; oy++){
-      drawTile(ox*fw, oy*fh);
-    }
-  }
-
-  requestAnimationFrame(draw);
-}
-draw();
-
-function drawTile(offX, offY){
   for(const p of particles){
-    const sx = p.x + offX - camX;
-    const sy = p.y + offY - camY;
+    p.x+=p.vx;
+    p.y+=p.vy;
+
+    if(!p.exploding){
+      if(p.x < -W) p.x += W*2;
+      if(p.x >  W*2) p.x -= W*2;
+      if(p.y < -H) p.y += H*2;
+      if(p.y >  H*2) p.y -= H*2;
+    }
+
+    const sx=p.x-camX;
+    const sy=p.y-camY;
 
     if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
 
     const pulse=audioLevel*4;
     ctx.beginPath();
     ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
-    ctx.fillStyle=`rgba(255,255,255,${p.a})`;
+    ctx.fillStyle=rgba(255,255,255,${p.a});
     ctx.fill();
   }
+
+  requestAnimationFrame(draw);
 }
+draw();
 
 /***********************
  * AUDIO
@@ -262,3 +332,6 @@ function reset(){
   createParticles();
 }
 </script>
+
+</body>
+</html>
