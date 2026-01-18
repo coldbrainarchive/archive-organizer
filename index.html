@@ -128,7 +128,7 @@ function createParticles(){
 createParticles();
 
 /***********************
- * SHOCKWAVES
+ * SHOCKWAVES (UPLOAD ONLY)
  ***********************/
 const shockwaves=[];
 
@@ -136,7 +136,7 @@ function addShockwave(x,y){
   shockwaves.push({
     x,y,
     r:0,
-    max:200,
+    max:220,
     alpha:1
   });
 }
@@ -153,7 +153,7 @@ let uploading=false;
 let uploadProgress=0;
 
 /***********************
- * DRAW LOOP (GLOW + DEPTH)
+ * DRAW LOOP
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
@@ -167,7 +167,7 @@ function draw(){
 
   const fw=W*2, fh=H*2;
 
-  /* ---- PARTICLES ---- */
+  /* PARTICLES */
   for(const p of particles){
     p.x+=p.vx;
     p.y+=p.vy;
@@ -202,37 +202,25 @@ function draw(){
     ctx.shadowBlur = 0;
   }
 
-  /* ---- SHOCKWAVES ---- */
+  /* SHOCKWAVES */
   for(let i=shockwaves.length-1;i>=0;i--){
-    const s = shockwaves[i];
-    s.r += 10;
-    s.alpha *= 0.92;
+    const s=shockwaves[i];
+    s.r+=10;
+    s.alpha*=0.92;
 
-    if(s.r > s.max || s.alpha < 0.02){
+    if(s.r>s.max||s.alpha<0.02){
       shockwaves.splice(i,1);
       continue;
     }
 
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.strokeStyle = `rgba(0,255,255,${s.alpha})`;
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 28;
-    ctx.shadowColor = "rgba(0,255,255,0.9)";
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
-
-  /* upload loader */
-  if(uploading){
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = "#fff";
-    ctx.beginPath();
-    ctx.arc(W/2,H/2,18,0,Math.PI*2*uploadProgress);
-    ctx.strokeStyle="#fff";
+    ctx.strokeStyle=`rgba(0,255,255,${s.alpha})`;
     ctx.lineWidth=2;
+    ctx.shadowBlur=30;
+    ctx.shadowColor="rgba(0,255,255,0.9)";
     ctx.stroke();
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur=0;
   }
 
   requestAnimationFrame(draw);
@@ -298,9 +286,8 @@ canvas.addEventListener("click",e=>{
     const sy = ry - fh/2 + H/2;
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
-      addShockwave(sx,sy); // 🔥 ALL CIRCLES TRIGGER SHOCKWAVE
-
       if(p.isUpload){
+        addShockwave(sx,sy); // ✅ ONLY upload circles
         openCamera();
       }else{
         explode(p.x,p.y);
@@ -344,11 +331,9 @@ async function playRandom(){
   try{
     const res=await fetch(API);
     const data=await res.json();
-    if(!data.ok || !data.url){ reset(); return; }
+    if(!data.ok||!data.url){reset();return;}
     setTimeout(()=>playVideo(data.url),420);
-  }catch{
-    reset();
-  }
+  }catch{reset();}
 }
 
 function playVideo(url){
