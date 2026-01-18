@@ -12,9 +12,7 @@ html,body{
   background:#000;
   overflow:hidden;
 }
-
 canvas{ position:fixed; inset:0; }
-
 #fade{
   position:fixed;
   inset:0;
@@ -24,7 +22,6 @@ canvas{ position:fixed; inset:0; }
   transition:opacity .45s ease;
   z-index:5;
 }
-
 video{
   position:fixed;
   inset:0;
@@ -47,7 +44,7 @@ video{
 const API = "/api/random";
 
 /***********************
- * CANVAS SETUP
+ * CANVAS
  ***********************/
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -63,8 +60,8 @@ resize();
 /***********************
  * PARTICLES
  ***********************/
-let particles = [];
-let audioLevel = 0;
+let particles=[];
+let audioLevel=0;
 
 function createParticles(){
   particles = Array.from({length:90}, ()=>({
@@ -73,8 +70,7 @@ function createParticles(){
     r:Math.random()*3+1,
     vx:(Math.random()-.5)*.4,
     vy:(Math.random()-.5)*.4,
-    a:Math.random()*.6+.2,
-    exploding:false
+    a:Math.random()*.6+.2
   }));
 }
 createParticles();
@@ -82,51 +78,39 @@ createParticles();
 /***********************
  * SHOCKWAVE
  ***********************/
-let shockwave = null;
-
-function spawnShockwave(x,y){
-  shockwave = {
-    x,y,
-    r:0,
-    a:0.8
-  };
+let shock=null;
+function shockwave(x,y){
+  shock={x,y,r:0,a:.8};
 }
 
 /***********************
- * DRAW LOOP
+ * DRAW LOOP (SAFE)
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
 
-  // particles
   for(const p of particles){
     p.x+=p.vx;
     p.y+=p.vy;
+    if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+    if(p.y<0)p.y=H;if(p.y>H)p.y=0;
 
-    if(!p.exploding){
-      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
-      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
-    }
-
-    const pulse = audioLevel * 4;
+    const pulse = audioLevel*4;
     ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r + pulse,0,Math.PI*2);
+    ctx.arc(p.x,p.y,p.r+pulse,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
 
-  // shockwave ring
-  if(shockwave){
-    shockwave.r += 12;
-    shockwave.a -= 0.02;
-
+  if(shock){
+    shock.r+=12;
+    shock.a-=.02;
     ctx.beginPath();
-    ctx.arc(shockwave.x, shockwave.y, shockwave.r, 0, Math.PI*2);
-    ctx.strokeStyle = `rgba(255,255,255,${shockwave.a})`;
-    ctx.lineWidth = 2;
+    ctx.arc(shock.x,shock.y,shock.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(255,255,255,${shock.a})`;
+    ctx.lineWidth=2;
     ctx.stroke();
-
-    if(shockwave.a <= 0) shockwave = null;
+    if(shock.a<=0) shock=null;
   }
 
   requestAnimationFrame(draw);
@@ -136,22 +120,17 @@ draw();
 /***********************
  * INTERACTION
  ***********************/
-let playing = false;
+let playing=false;
 
-canvas.addEventListener("pointerdown", e=>{
+canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
+  const r=canvas.getBoundingClientRect();
+  const x=e.clientX-r.left;
+  const y=e.clientY-r.top;
 
-  const r = canvas.getBoundingClientRect();
-  const x = e.clientX - r.left;
-  const y = e.clientY - r.top;
-
-  const hit = particles.some(p =>
-    Math.hypot(x-p.x,y-p.y)<=p.r+10
-  );
-
-  if(hit){
-    spawnShockwave(x,y);
+  if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
     explode(x,y);
+    shockwave(x,y);
     playRandom();
   }
 });
@@ -161,44 +140,30 @@ canvas.addEventListener("pointerdown", e=>{
  ***********************/
 function explode(cx,cy){
   for(const p of particles){
-    const dx = p.x-cx;
-    const dy = p.y-cy;
-    const d = Math.hypot(dx,dy);
+    const d=Math.hypot(p.x-cx,p.y-cy);
     if(d<140){
       const f=(1-d/140)*6;
-      p.vx+=(dx/d||0)*f;
-      p.vy+=(dy/d||0)*f;
-      p.exploding=true;
-
-      const fade=setInterval(()=>{
-        p.a-=0.05;
-        if(p.a<=0){
-          p.a=0;
-          clearInterval(fade);
-        }
-      },16);
+      p.vx+=(p.x-cx)/d*f||0;
+      p.vy+=(p.y-cy)/d*f||0;
+      p.a-=.3;
     }
   }
 }
 
 /***********************
- * VIDEO + AUDIO REACTIVE
+ * VIDEO + AUDIO (SAFE)
  ***********************/
-let analyser;
+let analyser=null;
 
 async function playRandom(){
   playing=true;
-  setTimeout(()=>fade(1),250);
+  fade(1);
 
-  try{
-    const res=await fetch(API);
-    const data=await res.json();
-    if(!data.ok) return reset();
-    setTimeout(()=>playVideo(data.url),550);
-  }catch(e){
-    console.error(e);
-    reset();
-  }
+  const res=await fetch(API);
+  const data=await res.json();
+  if(!data.ok) return reset();
+
+  setTimeout(()=>playVideo(data.url),400);
 }
 
 function playVideo(url){
@@ -207,35 +172,34 @@ function playVideo(url){
   vid.muted=true;
   vid.autoplay=true;
   vid.playsInline=true;
-  vid.preload="auto";
   document.body.appendChild(vid);
 
-  // AUDIO ANALYSIS
-  try{
-    const ctxAudio = new AudioContext();
-    const src = ctxAudio.createMediaElementSource(vid);
-    analyser = ctxAudio.createAnalyser();
-    analyser.fftSize = 64;
-    src.connect(analyser);
-    analyser.connect(ctxAudio.destination);
+  vid.addEventListener("playing",()=>{
+    vid.muted=false;
 
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    (function audioLoop(){
-      if(!playing) return;
-      analyser.getByteFrequencyData(data);
-      audioLevel = data.reduce((a,b)=>a+b,0)/data.length/255;
-      requestAnimationFrame(audioLoop);
-    })();
-  }catch{}
+    // SAFE AudioContext (inside user action chain)
+    try{
+      const ac=new AudioContext();
+      const src=ac.createMediaElementSource(vid);
+      analyser=ac.createAnalyser();
+      analyser.fftSize=64;
+      src.connect(analyser);
+      analyser.connect(ac.destination);
 
-  vid.addEventListener("playing",()=>setTimeout(()=>vid.muted=false,200));
-  vid.addEventListener("ended",cleanup);
-  vid.addEventListener("error",cleanup);
+      const arr=new Uint8Array(analyser.frequencyBinCount);
+      (function audioLoop(){
+        if(!playing) return;
+        analyser.getByteFrequencyData(arr);
+        audioLevel=arr.reduce((a,b)=>a+b,0)/arr.length/255;
+        requestAnimationFrame(audioLoop);
+      })();
+    }catch{}
+  });
 
-  const safety=setTimeout(cleanup,30000);
+  vid.onended=cleanup;
+  vid.onerror=cleanup;
 
   function cleanup(){
-    clearTimeout(safety);
     vid.remove();
     reset();
   }
@@ -245,7 +209,6 @@ function playVideo(url){
  * HELPERS
  ***********************/
 function fade(v){ document.getElementById("fade").style.opacity=v; }
-
 function reset(){
   fade(0);
   playing=false;
