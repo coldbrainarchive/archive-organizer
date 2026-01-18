@@ -123,29 +123,34 @@ function createParticles(){
         a: isUpload ? 1 : 0.12 + d * 0.65,
         isUpload,
 
-        /* ─────────────────────────────
-           ✨ LIFE / GLOW SYSTEM (VISUAL)
-        ───────────────────────────── */
+/* ─────────────────────────────
+   ✨ LIFE / GLOW SYSTEM (VISUAL)
+───────────────────────────── */
 
-        // breathing phase
-        pulse: Math.random() * Math.PI * 2,
+// breathing phase
+pulse: Math.random() * Math.PI * 2,
 
-        // slow, organic breathing
-        pulseSpeed: 0.0015 + Math.random() * 0.0025,
+// very slow, heavy breathing (feels massive)
+pulseSpeed: 0.0008 + Math.random() * 0.0016,
 
-        // how much brightness swings
-        pulseStrength: 1.8 + Math.random() * 2.8,
+// BIG brightness swings (very obvious)
+pulseStrength: 4.5 + Math.random() * 6.5,
 
-        // raw glow power
-        glowBoost: 20 + Math.random() * 40,
+// EXTREME glow baseline — halos overlap
+glowBoost: 70 + Math.random() * 110,
 
-        /* ─────────────────────────────
-           🌟 RARE FLARE SYSTEM
-        ───────────────────────────── */
+/* ─────────────────────────────
+   🌟 FLARE SYSTEM (LESS RARE, VERY HOT)
+───────────────────────────── */
 
-        flare: 0,                                   // current flare strength
-        flareChance: 0.0008 + Math.random() * 0.0015, // how often it spikes
-        flareDecay: 0.92 + Math.random() * 0.04       // fade speed
+// current flare strength
+flare: 0,
+
+// MUCH more frequent flares
+flareChance: 0.0025 + Math.random() * 0.0035,
+
+// flare death is visible but not instant
+flareDecay: 0.86 + Math.random() * 0.05
       });
     }
   }
