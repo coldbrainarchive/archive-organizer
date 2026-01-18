@@ -241,36 +241,53 @@ addEventListener("pointercancel",()=>dragging=false);
 /***********************
  * CLICK HANDLING
  ***********************/
-const uploader=document.getElementById("uploader");
+const uploader = document.getElementById("uploader");
 
-canvas.addEventListener("click",e=>{
-  if(dragging||playing) return;
+canvas.addEventListener("click", e => {
+  if(dragging || playing) return;
   unlockAudio();
 
-  const rect=canvas.getBoundingClientRect();
-  const mx=e.clientX-rect.left;
-  const my=e.clientY-rect.top;
-  const fw=W*2, fh=H*2;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const fw = W * 2;
+  const fh = H * 2;
 
+  let hit = false;
+
+  // ─────────────────────────
+  // 1️⃣ DIRECT PARTICLE HIT
+  // ─────────────────────────
   for(const p of particles){
-    if(p.a<=0) continue;
+    if(p.a <= 0) continue;
 
-    const rx=mod(p.x-camX*p.depth,fw);
-    const ry=mod(p.y-camY*p.depth,fh);
-    const sx=rx-fw/2+W/2;
-    const sy=ry-fh/2+H/2;
+    const rx = mod(p.x - camX * p.depth, fw);
+    const ry = mod(p.y - camY * p.depth, fh);
+    const sx = rx - fw/2 + W/2;
+    const sy = ry - fh/2 + H/2;
 
-    if(Math.hypot(mx-sx,my-sy)<=p.r+12){
+    if(Math.hypot(mx - sx, my - sy) <= p.r + 12){
+      hit = true;
+
       if(p.isUpload){
-        addShockwave(sx,sy);
-        p.a=0;
-        setTimeout(openCamera,500);
+        addShockwave(sx, sy);
+        p.a = 0;
+        setTimeout(openCamera, 500);
       }else{
-        explode(p.x,p.y);
+        explode(p.x, p.y);
         playRandom();
       }
       break;
     }
+  }
+
+  // ─────────────────────────
+  // 2️⃣ WATER RIPPLE (MISS)
+  // ─────────────────────────
+  if(!hit){
+    const wx = mx + camX;
+    const wy = my + camY;
+    ripple(wx, wy);
   }
 });
 
