@@ -92,7 +92,7 @@ resize();
 /***********************
  * PARTICLES
  ***********************/
-const DEPTHS=[0.5,0.75,1];
+const DEPTHS=[0.45,0.7,1]; // wider depth spread
 let particles=[];
 let audioLevel=0;
 
@@ -118,7 +118,7 @@ function createParticles(){
         r:baseRadius * d,
         vx:(Math.random()-.5)*0.25*d,
         vy:(Math.random()-.5)*0.25*d,
-        a:isUpload ? 1 : 0.15 + d*0.6,
+        a:isUpload ? 1 : 0.12 + d*0.65,
         exploding:false,
         isUpload
       });
@@ -139,7 +139,7 @@ let uploading=false;
 let uploadProgress=0;
 
 /***********************
- * DRAW LOOP
+ * DRAW LOOP (GLOW + DEPTH)
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
@@ -166,29 +166,40 @@ function draw(){
     const sx = rx - fw/2 + W/2;
     const sy = ry - fh/2 + H/2;
 
-    if(sx<-80||sx>W+80||sy<-80||sy>H+80) continue;
+    if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
-    const pulse=audioLevel*4*p.depth;
+    const pulse = audioLevel * 5 * p.depth;
+
+    /* ---- GLOW SETUP ---- */
+    const glow = 6 + p.depth * 14 + pulse*3;
+    ctx.shadowBlur = glow;
+    ctx.shadowColor = "rgba(255,255,255,0.35)";
 
     ctx.beginPath();
     ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
 
     if(p.isUpload){
       ctx.strokeStyle="rgba(255,255,255,0.9)";
-      ctx.lineWidth=1.6;
+      ctx.lineWidth = 1.2 + p.depth*1.2;
       ctx.stroke();
     }else{
       ctx.fillStyle=`rgba(255,255,255,${p.a})`;
       ctx.fill();
     }
+
+    ctx.shadowBlur = 0; // reset for safety
   }
 
+  /* upload loader */
   if(uploading){
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = "#fff";
     ctx.beginPath();
     ctx.arc(W/2,H/2,18,0,Math.PI*2*uploadProgress);
     ctx.strokeStyle="#fff";
     ctx.lineWidth=2;
     ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
   requestAnimationFrame(draw);
@@ -307,7 +318,7 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO FLOW (FIXED)
+ * VIDEO FLOW (unchanged)
  ***********************/
 async function playRandom(){
   playing=true;
@@ -317,15 +328,9 @@ async function playRandom(){
   try{
     const res=await fetch(API);
     const data=await res.json();
-
-    if(!data.ok || !data.url){
-      reset();
-      return;
-    }
-
+    if(!data.ok || !data.url){ reset(); return; }
     setTimeout(()=>playVideo(data.url),420);
   }catch(err){
-    console.error(err);
     reset();
   }
 }
@@ -333,20 +338,18 @@ async function playRandom(){
 function playVideo(url){
   const vid=document.createElement("video");
   currentVideo=vid;
-
   vid.src=url;
   vid.muted=true;
   vid.autoplay=true;
   vid.playsInline=true;
   vid.style.opacity=0;
-  vid.style.pointerEvents="auto";
   document.body.appendChild(vid);
 
-  vid.addEventListener("playing",()=>{
+  vid.onplaying=()=>{
     vid.style.opacity=1;
     setTimeout(()=>vid.muted=false,200);
     if(audioReady) attachAudio(vid);
-  });
+  };
 
   vid.addEventListener("pointerdown", exitVideo);
   vid.onended=exitVideo;
@@ -355,10 +358,8 @@ function playVideo(url){
 
 function exitVideo(){
   if(!currentVideo) return;
-
   fade(1);
   currentVideo.style.opacity=0;
-
   setTimeout(()=>{
     currentVideo.pause();
     currentVideo.remove();
@@ -373,11 +374,9 @@ function exitVideo(){
  ***********************/
 function attachAudio(video){
   if(mediaSource) return;
-
   mediaSource=audioCtx.createMediaElementSource(video);
   analyser=audioCtx.createAnalyser();
   analyser.fftSize=64;
-
   mediaSource.connect(analyser);
   analyser.connect(audioCtx.destination);
 
