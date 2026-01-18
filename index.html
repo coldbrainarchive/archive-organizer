@@ -47,16 +47,17 @@ video{
 
 <canvas id="c"></canvas>
 <div id="fade"></div>
-
 <input id="uploader" type="file" accept="video/*" capture="environment">
 
 <script>
 const API="/api/random";
 
 /***********************
- * AUDIO STATE
+ * STATE
  ***********************/
 let audioCtx=null;
+let playing=false;
+let currentVideo=null;
 
 /***********************
  * CAMERA (INERTIA)
@@ -89,7 +90,6 @@ resize();
  ***********************/
 const DEPTHS=[0.45,0.7,1];
 let particles=[];
-let audioLevel=0;
 
 function createParticles(){
   particles=[];
@@ -122,10 +122,9 @@ function createParticles(){
 createParticles();
 
 /***********************
- * SHOCKWAVES
+ * SHOCKWAVES (UPLOAD)
  ***********************/
 const shockwaves=[];
-
 function addShockwave(x,y){
   shockwaves.push({ x,y,r:0,max:220,alpha:1 });
 }
@@ -151,7 +150,7 @@ function draw(){
   const fw=W*2, fh=H*2;
 
   for(const p of particles){
-    if(p.a<=0) continue; // 👈 disappears visually only
+    if(p.a<=0) continue;
 
     p.x+=p.vx;
     p.y+=p.vy;
@@ -194,7 +193,7 @@ function draw(){
 
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`; // ✅ white
+    ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`;
     ctx.lineWidth=2;
     ctx.shadowBlur=30;
     ctx.shadowColor="rgba(255,255,255,1)";
@@ -225,7 +224,6 @@ canvas.addEventListener("pointerdown",e=>{
   lastY=e.clientY;
   velX=velY=0;
 });
-
 addEventListener("pointermove",e=>{
   if(!dragging) return;
   const dx=e.clientX-lastX;
@@ -237,7 +235,6 @@ addEventListener("pointermove",e=>{
   lastX=e.clientX;
   lastY=e.clientY;
 });
-
 addEventListener("pointerup",()=>dragging=false);
 addEventListener("pointercancel",()=>dragging=false);
 
@@ -247,7 +244,7 @@ addEventListener("pointercancel",()=>dragging=false);
 const uploader=document.getElementById("uploader");
 
 canvas.addEventListener("click",e=>{
-  if(dragging) return;
+  if(dragging||playing) return;
   unlockAudio();
 
   const rect=canvas.getBoundingClientRect();
@@ -266,8 +263,8 @@ canvas.addEventListener("click",e=>{
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
       if(p.isUpload){
         addShockwave(sx,sy);
-        p.a=0;                       // ✅ disappear safely
-        setTimeout(openCamera,500);  // ✅ delay camera
+        p.a=0;
+        setTimeout(openCamera,500);
       }else{
         explode(p.x,p.y);
         playRandom();
@@ -283,6 +280,83 @@ canvas.addEventListener("click",e=>{
 function openCamera(){
   uploader.value="";
   uploader.click();
+}
+
+/***********************
+ * EXPLOSION
+ ***********************/
+function explode(cx,cy){
+  for(const p of particles){
+    const d=Math.hypot(p.x-cx,p.y-cy);
+    if(d<140){
+      const f=(1-d/140)*6;
+      p.vx+=(p.x-cx)/d*f||0;
+      p.vy+=(p.y-cy)/d*f||0;
+    }
+  }
+}
+
+/***********************
+ * VIDEO FLOW
+ ***********************/
+async function playRandom(){
+  playing=true;
+  velX=velY=0;
+  setTimeout(()=>fade(1),200);
+
+  try{
+    const res=await fetch(API);
+    const data=await res.json();
+    if(!data.ok||!data.url){ reset(); return; }
+    setTimeout(()=>playVideo(data.url),420);
+  }catch{
+    reset();
+  }
+}
+
+function playVideo(url){
+  const vid=document.createElement("video");
+  currentVideo=vid;
+  vid.src=url;
+  vid.muted=true;
+  vid.autoplay=true;
+  vid.playsInline=true;
+  vid.style.opacity=0;
+  document.body.appendChild(vid);
+
+  vid.onplaying=()=>{
+    vid.style.opacity=1;
+    setTimeout(()=>vid.muted=false,200);
+  };
+
+  vid.addEventListener("pointerdown", exitVideo);
+  vid.onended=exitVideo;
+  vid.onerror=exitVideo;
+}
+
+function exitVideo(){
+  if(!currentVideo) return;
+  fade(1);
+  currentVideo.style.opacity=0;
+  setTimeout(()=>{
+    currentVideo.pause();
+    currentVideo.remove();
+    currentVideo=null;
+    reset();
+  },350);
+}
+
+/***********************
+ * HELPERS
+ ***********************/
+function fade(v){
+  document.getElementById("fade").style.opacity=v;
+}
+function reset(){
+  fade(0);
+  playing=false;
+  camX=camY=velX=velY=0;
+  createParticles();
 }
 </script>
 
