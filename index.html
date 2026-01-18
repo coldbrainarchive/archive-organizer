@@ -49,32 +49,29 @@ const API = "/api/random";
 /***********************
  * AUDIO STATE
  ***********************/
-let audioCtx = null;
-let analyser = null;
-let mediaSource = null;
-let audioReady = false;
+let audioCtx=null, analyser=null, mediaSource=null;
+let audioReady=false;
 
-function unlockAudio(){
-  if(!audioCtx){
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  if(audioCtx.state !== "running"){
-    audioCtx.resume();
-  }
-}
+/***********************
+ * CAMERA (INFINITE FIELD)
+ ***********************/
+let camX=0, camY=0;
+let targetCamX=0, targetCamY=0;
+let dragging=false;
+let lastX=0, lastY=0;
 
 /***********************
  * CANVAS
  ***********************/
-const canvas = document.getElementById("c");
-const ctx = canvas.getContext("2d");
+const canvas=document.getElementById("c");
+const ctx=canvas.getContext("2d");
 let W,H;
 
 function resize(){
-  W = canvas.width = innerWidth;
-  H = canvas.height = innerHeight;
+  W=canvas.width=innerWidth;
+  H=canvas.height=innerHeight;
 }
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 resize();
 
 /***********************
@@ -84,9 +81,9 @@ let particles=[];
 let audioLevel=0;
 
 function createParticles(){
-  particles = Array.from({length:90}, ()=>({
-    x:Math.random()*W,
-    y:Math.random()*H,
+  particles = Array.from({length:90},()=>({
+    x:Math.random()*W*2,
+    y:Math.random()*H*2,
     r:Math.random()*3+1,
     vx:(Math.random()-.5)*.4,
     vy:(Math.random()-.5)*.4,
@@ -102,18 +99,28 @@ createParticles();
 function draw(){
   ctx.clearRect(0,0,W,H);
 
+  camX += (targetCamX-camX)*0.08;
+  camY += (targetCamY-camY)*0.08;
+
   for(const p of particles){
     p.x+=p.vx;
     p.y+=p.vy;
 
     if(!p.exploding){
-      if(p.x<0)p.x=W;if(p.x>W)p.x=0;
-      if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      if(p.x < -W) p.x += W*2;
+      if(p.x >  W*2) p.x -= W*2;
+      if(p.y < -H) p.y += H*2;
+      if(p.y >  H*2) p.y -= H*2;
     }
 
-    const pulse = audioLevel*4;
+    const sx=p.x-camX;
+    const sy=p.y-camY;
+
+    if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
+
+    const pulse=audioLevel*4;
     ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r+pulse,0,Math.PI*2);
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
@@ -123,18 +130,55 @@ function draw(){
 draw();
 
 /***********************
- * INTERACTION
+ * AUDIO
+ ***********************/
+function unlockAudio(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  }
+  if(audioCtx.state!=="running") audioCtx.resume();
+}
+
+/***********************
+ * INTERACTION (CAMERA)
+ ***********************/
+canvas.addEventListener("pointerdown",e=>{
+  if(playing) return;
+  dragging=true;
+  lastX=e.clientX;
+  lastY=e.clientY;
+});
+
+addEventListener("pointermove",e=>{
+  if(!dragging||playing) return;
+  targetCamX -= (e.clientX-lastX)*0.6;
+  targetCamY -= (e.clientY-lastY)*0.6;
+  lastX=e.clientX;
+  lastY=e.clientY;
+});
+
+addEventListener("pointerup",()=>dragging=false);
+addEventListener("pointercancel",()=>dragging=false);
+
+addEventListener("wheel",e=>{
+  if(playing) return;
+  targetCamX+=e.deltaX*0.4;
+  targetCamY+=e.deltaY*0.4;
+},{passive:true});
+
+/***********************
+ * INTERACTION (PLAY)
  ***********************/
 let playing=false;
 let currentVideo=null;
 
-canvas.addEventListener("pointerdown",e=>{
+canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
   const r=canvas.getBoundingClientRect();
-  const x=e.clientX-r.left;
-  const y=e.clientY-r.top;
+  const x=e.clientX-r.left+camX;
+  const y=e.clientY-r.top+camY;
 
   if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
     explode(x,y);
@@ -154,11 +198,11 @@ function explode(cx,cy){
       p.vy+=(p.y-cy)/d*f||0;
       p.exploding=true;
 
-      const fadeOut=setInterval(()=>{
+      const fade=setInterval(()=>{
         p.a-=0.05;
         if(p.a<=0){
           p.a=0;
-          clearInterval(fadeOut);
+          clearInterval(fade);
         }
       },16);
     }
@@ -181,7 +225,7 @@ async function playRandom(){
 
 function playVideo(url){
   const vid=document.createElement("video");
-  currentVideo = vid;
+  currentVideo=vid;
 
   vid.src=url;
   vid.muted=true;
@@ -190,50 +234,34 @@ function playVideo(url){
   vid.preload="auto";
   vid.style.opacity="0";
   vid.style.pointerEvents="auto";
-
   document.body.appendChild(vid);
 
   vid.addEventListener("playing",()=>{
     vid.style.opacity="1";
     setTimeout(()=>vid.muted=false,200);
-
-    if(audioReady){
-      attachAudio(vid);
-    }
+    if(audioReady) attachAudio(vid);
   });
 
-  // tap video to exit early
-  vid.addEventListener("pointerdown", exitVideo);
-
-  // ✅ FIX: natural end behaves the SAME as exit tap
-  vid.onended = cleanup;
-  vid.onerror = cleanup;
+  vid.addEventListener("pointerdown",exitVideo);
+  vid.onended=cleanup;
+  vid.onerror=cleanup;
 
   function cleanup(){
-    audioReady = true;
+    audioReady=true;
     fade(1);
     vid.style.opacity="0";
-
-    setTimeout(()=>{
-      removeVideo();
-      reset();
-    },350);
+    setTimeout(()=>{ removeVideo(); reset(); },350);
   }
 }
 
 /***********************
- * EXIT VIDEO (tap)
+ * EXIT VIDEO
  ***********************/
 function exitVideo(){
   if(!currentVideo) return;
-
   fade(1);
   currentVideo.style.opacity="0";
-
-  setTimeout(()=>{
-    removeVideo();
-    reset();
-  },350);
+  setTimeout(()=>{ removeVideo(); reset(); },350);
 }
 
 function removeVideo(){
@@ -249,34 +277,31 @@ function removeVideo(){
  ***********************/
 function attachAudio(video){
   if(mediaSource) return;
-
-  mediaSource = audioCtx.createMediaElementSource(video);
-  analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 64;
-
+  mediaSource=audioCtx.createMediaElementSource(video);
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=64;
   mediaSource.connect(analyser);
   analyser.connect(audioCtx.destination);
 
   const arr=new Uint8Array(analyser.frequencyBinCount);
-  (function audioLoop(){
+  (function loop(){
     if(!playing) return;
     analyser.getByteFrequencyData(arr);
-    audioLevel = arr.reduce((a,b)=>a+b,0)/arr.length/255;
-    requestAnimationFrame(audioLoop);
+    audioLevel=arr.reduce((a,b)=>a+b,0)/arr.length/255;
+    requestAnimationFrame(loop);
   })();
 }
 
 /***********************
  * HELPERS
  ***********************/
-function fade(v){
-  document.getElementById("fade").style.opacity=v;
-}
+function fade(v){ document.getElementById("fade").style.opacity=v; }
 
 function reset(){
   fade(0);
   playing=false;
   audioLevel=0;
+  camX=camY=targetCamX=targetCamY=0;
   createParticles();
 }
 </script>
