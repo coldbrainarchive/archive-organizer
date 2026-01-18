@@ -92,7 +92,7 @@ resize();
 /***********************
  * PARTICLES
  ***********************/
-const DEPTHS=[0.45,0.7,1]; // wider depth spread
+const DEPTHS=[0.45,0.7,1];
 let particles=[];
 let audioLevel=0;
 
@@ -128,6 +128,20 @@ function createParticles(){
 createParticles();
 
 /***********************
+ * SHOCKWAVES
+ ***********************/
+const shockwaves=[];
+
+function addShockwave(x,y){
+  shockwaves.push({
+    x,y,
+    r:0,
+    max:200,
+    alpha:1
+  });
+}
+
+/***********************
  * MODULO
  ***********************/
 function mod(n,m){ return ((n%m)+m)%m; }
@@ -153,6 +167,7 @@ function draw(){
 
   const fw=W*2, fh=H*2;
 
+  /* ---- PARTICLES ---- */
   for(const p of particles){
     p.x+=p.vx;
     p.y+=p.vy;
@@ -169,12 +184,10 @@ function draw(){
     if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
     const pulse = audioLevel * 5 * p.depth;
-
-    /* ---- GLOW SETUP ---- */
     const glow = 6 + p.depth * 14 + pulse*3;
+
     ctx.shadowBlur = glow;
     ctx.shadowColor = "rgba(255,255,255,0.35)";
-
     ctx.beginPath();
     ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
 
@@ -186,8 +199,28 @@ function draw(){
       ctx.fillStyle=`rgba(255,255,255,${p.a})`;
       ctx.fill();
     }
+    ctx.shadowBlur = 0;
+  }
 
-    ctx.shadowBlur = 0; // reset for safety
+  /* ---- SHOCKWAVES ---- */
+  for(let i=shockwaves.length-1;i>=0;i--){
+    const s = shockwaves[i];
+    s.r += 10;
+    s.alpha *= 0.92;
+
+    if(s.r > s.max || s.alpha < 0.02){
+      shockwaves.splice(i,1);
+      continue;
+    }
+
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.strokeStyle = `rgba(0,255,255,${s.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 28;
+    ctx.shadowColor = "rgba(0,255,255,0.9)";
+    ctx.stroke();
+    ctx.shadowBlur = 0;
   }
 
   /* upload loader */
@@ -256,7 +289,6 @@ canvas.addEventListener("click",e=>{
   const rect=canvas.getBoundingClientRect();
   const mx=e.clientX-rect.left;
   const my=e.clientY-rect.top;
-
   const fw=W*2, fh=H*2;
 
   for(const p of particles){
@@ -266,6 +298,8 @@ canvas.addEventListener("click",e=>{
     const sy = ry - fh/2 + H/2;
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
+      addShockwave(sx,sy); // 🔥 ALL CIRCLES TRIGGER SHOCKWAVE
+
       if(p.isUpload){
         openCamera();
       }else{
@@ -285,23 +319,6 @@ function openCamera(){
   uploader.click();
 }
 
-uploader.addEventListener("change",()=>{
-  if(!uploader.files.length) return;
-
-  uploading=true;
-  uploadProgress=0;
-
-  const interval=setInterval(()=>{
-    uploadProgress+=0.05;
-    if(uploadProgress>=1){
-      clearInterval(interval);
-      uploading=false;
-      uploadProgress=0;
-      reset();
-    }
-  },80);
-});
-
 /***********************
  * EXPLOSION
  ***********************/
@@ -318,19 +335,18 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO FLOW (unchanged)
+ * VIDEO FLOW
  ***********************/
 async function playRandom(){
   playing=true;
   velX=velY=0;
   setTimeout(()=>fade(1),200);
-
   try{
     const res=await fetch(API);
     const data=await res.json();
     if(!data.ok || !data.url){ reset(); return; }
     setTimeout(()=>playVideo(data.url),420);
-  }catch(err){
+  }catch{
     reset();
   }
 }
@@ -348,7 +364,6 @@ function playVideo(url){
   vid.onplaying=()=>{
     vid.style.opacity=1;
     setTimeout(()=>vid.muted=false,200);
-    if(audioReady) attachAudio(vid);
   };
 
   vid.addEventListener("pointerdown", exitVideo);
@@ -364,36 +379,14 @@ function exitVideo(){
     currentVideo.pause();
     currentVideo.remove();
     currentVideo=null;
-    audioReady=true;
     reset();
   },350);
-}
-
-/***********************
- * AUDIO ANALYSER
- ***********************/
-function attachAudio(video){
-  if(mediaSource) return;
-  mediaSource=audioCtx.createMediaElementSource(video);
-  analyser=audioCtx.createAnalyser();
-  analyser.fftSize=64;
-  mediaSource.connect(analyser);
-  analyser.connect(audioCtx.destination);
-
-  const arr=new Uint8Array(analyser.frequencyBinCount);
-  (function loop(){
-    if(!playing) return;
-    analyser.getByteFrequencyData(arr);
-    audioLevel=arr.reduce((a,b)=>a+b,0)/arr.length/255;
-    requestAnimationFrame(loop);
-  })();
 }
 
 /***********************
  * HELPERS
  ***********************/
 function fade(v){ document.getElementById("fade").style.opacity=v; }
-
 function reset(){
   fade(0);
   playing=false;
