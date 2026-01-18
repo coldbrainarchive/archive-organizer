@@ -94,32 +94,7 @@ function createParticles(){
 createParticles();
 
 /***********************
- * CAMERA WRAP (🔥 FIX)
- ***********************/
-function wrapCamera(){
-  const fw = W * 2;
-  const fh = H * 2;
-
-  if(camX < 0){
-    camX += fw;
-    targetCamX += fw;
-  }
-  if(camX > fw){
-    camX -= fw;
-    targetCamX -= fw;
-  }
-  if(camY < 0){
-    camY += fh;
-    targetCamY += fh;
-  }
-  if(camY > fh){
-    camY -= fh;
-    targetCamY -= fh;
-  }
-}
-
-/***********************
- * DRAW LOOP
+ * DRAW LOOP (TRUE INFINITE TILE)
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
@@ -127,34 +102,37 @@ function draw(){
   camX += (targetCamX-camX)*0.08;
   camY += (targetCamY-camY)*0.08;
 
-  wrapCamera(); // ✅ infinite scroll fix
+  const fw = W * 2;
+  const fh = H * 2;
 
-  for(const p of particles){
-    p.x+=p.vx;
-    p.y+=p.vy;
-
-    if(!p.exploding){
-      if(p.x < -W) p.x += W*2;
-      if(p.x >  W*2) p.x -= W*2;
-      if(p.y < -H) p.y += H*2;
-      if(p.y >  H*2) p.y -= H*2;
+  // draw 3x3 tiled world around camera
+  for(let ox=-1; ox<=1; ox++){
+    for(let oy=-1; oy<=1; oy++){
+      drawTile(ox*fw, oy*fh);
     }
-
-    const sx=p.x-camX;
-    const sy=p.y-camY;
-
-    if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
-
-    const pulse=audioLevel*4;
-    ctx.beginPath();
-    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
-    ctx.fillStyle=rgba(255,255,255,${p.a});
-    ctx.fill();
   }
 
   requestAnimationFrame(draw);
 }
 draw();
+
+function drawTile(offX, offY){
+  for(const p of particles){
+    p.x+=p.vx;
+    p.y+=p.vy;
+
+    const sx = p.x + offX - camX;
+    const sy = p.y + offY - camY;
+
+    if(sx<-50||sx>W+50||sy<-50||sy>H+50) continue;
+
+    const pulse = audioLevel*4;
+    ctx.beginPath();
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${p.a})`;
+    ctx.fill();
+  }
+}
 
 /***********************
  * AUDIO
