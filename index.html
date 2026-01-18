@@ -114,7 +114,7 @@ function createParticles(){
         vy:(Math.random()-.5)*0.25*d,
         a:isUpload ? 1 : 0.12 + d*0.65,
         isUpload,
-        dead:false   // 👈 added
+        dead:false          // ✅ allows upload circle to disappear
       });
     }
   }
@@ -127,7 +127,12 @@ createParticles();
 const shockwaves=[];
 
 function addShockwave(x,y){
-  shockwaves.push({ x,y,r:0,max:220,alpha:1 });
+  shockwaves.push({
+    x,y,
+    r:0,
+    max:220,
+    alpha:1
+  });
 }
 
 /***********************
@@ -151,7 +156,7 @@ function draw(){
   const fw=W*2, fh=H*2;
 
   for(const p of particles){
-    if(p.dead) continue; // 👈 disappear after tap
+    if(p.dead) continue; // ✅ hide tapped upload circles
 
     p.x+=p.vx;
     p.y+=p.vy;
@@ -165,8 +170,7 @@ function draw(){
 
     if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
-    const glow=6+p.depth*14;
-    ctx.shadowBlur=glow;
+    ctx.shadowBlur=6+p.depth*14;
     ctx.shadowColor="rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.arc(sx,sy,p.r,0,Math.PI*2);
@@ -198,7 +202,7 @@ function draw(){
     ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`;   // ✅ white
     ctx.lineWidth=2;
     ctx.shadowBlur=30;
-    ctx.shadowColor="rgba(255,255,255,1)";            // ✅ white glow
+    ctx.shadowColor="rgba(255,255,255,1)";
     ctx.stroke();
     ctx.shadowBlur=0;
   }
@@ -266,11 +270,11 @@ canvas.addEventListener("click",e=>{
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
       if(p.isUpload){
-        p.dead = true;                 // ✅ disappear
-        addShockwave(sx,sy);           // ✅ white shockwave
-        setTimeout(openCamera,500);    // ✅ delay camera
+        p.dead = true;               // ✅ disappear
+        addShockwave(sx,sy);         // ✅ white shockwave
+        setTimeout(openCamera,500);  // ✅ delay camera
       }else{
-        explode(p.x,p.y);
+        explode(p.x,p.y);            // ✅ normal particles unchanged
         playRandom();
       }
       break;
@@ -284,6 +288,24 @@ canvas.addEventListener("click",e=>{
 function openCamera(){
   uploader.value="";
   uploader.click();
+}
+
+/***********************
+ * NORMAL PARTICLE FUNCTIONS (UNCHANGED)
+ ***********************/
+function explode(cx,cy){
+  for(const p of particles){
+    const d=Math.hypot(p.x-cx,p.y-cy);
+    if(d<140){
+      const f=(1-d/140)*6;
+      p.vx+=(p.x-cx)/d*f||0;
+      p.vy+=(p.y-cy)/d*f||0;
+    }
+  }
+}
+
+async function playRandom(){
+  console.log("Normal particle clicked");
 }
 </script>
 
