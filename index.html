@@ -86,9 +86,6 @@ const DEPTHS=[0.4,0.7,1];
 let particles=[];
 let audioLevel=0;
 
-// 🔑 ALL HIT BOXES LIVE HERE
-let hitTargets=[];
-
 function createParticles(){
   particles=[];
   for(const d of DEPTHS){
@@ -113,7 +110,6 @@ createParticles();
 function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
-  hitTargets.length = 0;
 
   camX+=velX;
   camY+=velY;
@@ -152,19 +148,10 @@ function drawTile(offX,offY){
     if(sx<-120||sx>W+120||sy<-120||sy>H+120) continue;
 
     const pulse=audioLevel*4*p.depth;
-    const rr=p.r+pulse;
-
     ctx.beginPath();
-    ctx.arc(sx,sy,rr,0,Math.PI*2);
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
-
-    // 🔑 REGISTER EVERY VISIBLE PARTICLE COPY
-    hitTargets.push({
-      sx, sy, r: rr,
-      wx: p.x+offX,
-      wy: p.y+offY
-    });
   }
 }
 
@@ -220,16 +207,25 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  const mx=e.clientX;
-  const my=e.clientY;
+  // 🔑 SCREEN → WORLD
+  const mx=(e.clientX-W/2)/zoom;
+  const my=(e.clientY-H/2)/zoom;
 
-  // 🔥 CHECK AGAINST ALL VISIBLE HIT BOXES
-  const hit = hitTargets.find(h=>{
-    return Math.hypot(mx-h.sx,my-h.sy)<=h.r+6;
+  const wx = mx*Math.cos(-rotation)-my*Math.sin(-rotation)+camX;
+  const wy = mx*Math.sin(-rotation)+my*Math.cos(-rotation)+camY;
+
+  const fw=W*2, fh=H*2;
+
+  // 🔁 WRAP WORLD POSITION
+  const tx=((wx%fw)+fw)%fw;
+  const ty=((wy%fh)+fh)%fh;
+
+  const hit = particles.find(p=>{
+    return Math.hypot(tx-p.x,ty-p.y)<=p.r+8;
   });
 
   if(hit){
-    explode(hit.wx,hit.wy);
+    explode(hit.x,hit.y);
     playRandom();
   }
 });
