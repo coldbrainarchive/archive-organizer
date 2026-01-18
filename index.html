@@ -35,6 +35,7 @@ video{
   transition:opacity .4s ease;
 }
 
+/* hidden camera input */
 #uploader{
   position:fixed;
   opacity:0;
@@ -48,7 +49,10 @@ video{
 <canvas id="c"></canvas>
 <div id="fade"></div>
 
-<input id="uploader" type="file" accept="video/*" capture="environment">
+<input id="uploader"
+       type="file"
+       accept="video/*"
+       capture="environment">
 
 <script>
 const API="/api/random";
@@ -56,7 +60,8 @@ const API="/api/random";
 /***********************
  * AUDIO STATE
  ***********************/
-let audioCtx=null;
+let audioCtx=null, analyser=null, mediaSource=null;
+let audioReady=false;
 
 /***********************
  * CAMERA (INERTIA)
@@ -89,6 +94,7 @@ resize();
  ***********************/
 const DEPTHS=[0.45,0.7,1];
 let particles=[];
+let audioLevel=0;
 
 function createParticles(){
   particles=[];
@@ -114,8 +120,7 @@ function createParticles(){
         vy:(Math.random()-.5)*0.25*d,
         a:isUpload ? 1 : 0.12 + d*0.65,
         exploding:false,
-        isUpload,
-        dead:false            // ✅ added
+        isUpload
       });
     }
   }
@@ -123,12 +128,17 @@ function createParticles(){
 createParticles();
 
 /***********************
- * SHOCKWAVES
+ * SHOCKWAVES (UPLOAD ONLY)
  ***********************/
 const shockwaves=[];
 
 function addShockwave(x,y){
-  shockwaves.push({ x,y,r:0,max:220,alpha:1 });
+  shockwaves.push({
+    x,y,
+    r:0,
+    max:220,
+    alpha:1
+  });
 }
 
 /***********************
@@ -137,52 +147,62 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
+ * UPLOAD STATE
+ ***********************/
+let uploading=false;
+let uploadProgress=0;
+
+/***********************
  * DRAW LOOP
  ***********************/
 function draw(){
   ctx.clearRect(0,0,W,H);
 
   if(!dragging){
-    camX+=velX;
-    camY+=velY;
-    velX*=FRICTION;
-    velY*=FRICTION;
+    camX += velX;
+    camY += velY;
+    velX *= FRICTION;
+    velY *= FRICTION;
   }
 
   const fw=W*2, fh=H*2;
 
+  /* PARTICLES */
   for(const p of particles){
-    if(p.dead) continue; // ✅ hide upload circle after tap
-
     p.x+=p.vx;
     p.y+=p.vy;
-    p.x=mod(p.x,fw);
-    p.y=mod(p.y,fh);
 
-    const rx=mod(p.x-camX*p.depth,fw);
-    const ry=mod(p.y-camY*p.depth,fh);
-    const sx=rx-fw/2+W/2;
-    const sy=ry-fh/2+H/2;
+    p.x = mod(p.x, fw);
+    p.y = mod(p.y, fh);
+
+    const rx = mod(p.x - camX*p.depth, fw);
+    const ry = mod(p.y - camY*p.depth, fh);
+
+    const sx = rx - fw/2 + W/2;
+    const sy = ry - fh/2 + H/2;
 
     if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
-    ctx.shadowBlur=6+p.depth*14;
-    ctx.shadowColor="rgba(255,255,255,0.35)";
+    const pulse = audioLevel * 5 * p.depth;
+    const glow = 6 + p.depth * 14 + pulse*3;
+
+    ctx.shadowBlur = glow;
+    ctx.shadowColor = "rgba(255,255,255,0.35)";
     ctx.beginPath();
-    ctx.arc(sx,sy,p.r,0,Math.PI*2);
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
 
     if(p.isUpload){
       ctx.strokeStyle="rgba(255,255,255,0.9)";
-      ctx.lineWidth=1.2+p.depth*1.2;
+      ctx.lineWidth = 1.2 + p.depth*1.2;
       ctx.stroke();
     }else{
       ctx.fillStyle=`rgba(255,255,255,${p.a})`;
       ctx.fill();
     }
-    ctx.shadowBlur=0;
+    ctx.shadowBlur = 0;
   }
 
-  /* WHITE SHOCKWAVES */
+  /* SHOCKWAVES */
   for(let i=shockwaves.length-1;i>=0;i--){
     const s=shockwaves[i];
     s.r+=10;
@@ -195,10 +215,10 @@ function draw(){
 
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`; // ✅ white
+    ctx.strokeStyle=`rgba(0,255,255,${s.alpha})`;
     ctx.lineWidth=2;
     ctx.shadowBlur=30;
-    ctx.shadowColor="rgba(255,255,255,1)";
+    ctx.shadowColor="rgba(0,255,255,0.9)";
     ctx.stroke();
     ctx.shadowBlur=0;
   }
@@ -221,6 +241,7 @@ function unlockAudio(){
  * CAMERA INPUT
  ***********************/
 canvas.addEventListener("pointerdown",e=>{
+  if(playing||uploading) return;
   dragging=true;
   lastX=e.clientX;
   lastY=e.clientY;
@@ -228,13 +249,13 @@ canvas.addEventListener("pointerdown",e=>{
 });
 
 addEventListener("pointermove",e=>{
-  if(!dragging) return;
+  if(!dragging||playing||uploading) return;
   const dx=e.clientX-lastX;
   const dy=e.clientY-lastY;
-  camX-=dx*DRAG_SPEED;
-  camY-=dy*DRAG_SPEED;
-  velX=-dx*VELOCITY_SCALE;
-  velY=-dy*VELOCITY_SCALE;
+  camX -= dx * DRAG_SPEED;
+  camY -= dy * DRAG_SPEED;
+  velX = -dx * VELOCITY_SCALE;
+  velY = -dy * VELOCITY_SCALE;
   lastX=e.clientX;
   lastY=e.clientY;
 });
@@ -245,10 +266,12 @@ addEventListener("pointercancel",()=>dragging=false);
 /***********************
  * CLICK HANDLING
  ***********************/
+let playing=false;
+let currentVideo=null;
 const uploader=document.getElementById("uploader");
 
 canvas.addEventListener("click",e=>{
-  if(dragging) return;
+  if(playing||dragging||uploading) return;
   unlockAudio();
 
   const rect=canvas.getBoundingClientRect();
@@ -257,18 +280,15 @@ canvas.addEventListener("click",e=>{
   const fw=W*2, fh=H*2;
 
   for(const p of particles){
-    if(p.dead) continue;
-
-    const rx=mod(p.x-camX*p.depth,fw);
-    const ry=mod(p.y-camY*p.depth,fh);
-    const sx=rx-fw/2+W/2;
-    const sy=ry-fh/2+H/2;
+    const rx = mod(p.x - camX*p.depth, fw);
+    const ry = mod(p.y - camY*p.depth, fh);
+    const sx = rx - fw/2 + W/2;
+    const sy = ry - fh/2 + H/2;
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
       if(p.isUpload){
-        p.dead = true;                // ✅ disappear
-        addShockwave(sx,sy);          // ✅ white shockwave
-        setTimeout(openCamera,500);   // ✅ delay camera
+        addShockwave(sx,sy); // ✅ ONLY upload circles
+        openCamera();
       }else{
         explode(p.x,p.y);
         playRandom();
@@ -284,6 +304,81 @@ canvas.addEventListener("click",e=>{
 function openCamera(){
   uploader.value="";
   uploader.click();
+}
+
+/***********************
+ * EXPLOSION
+ ***********************/
+function explode(cx,cy){
+  for(const p of particles){
+    const d=Math.hypot(p.x-cx,p.y-cy);
+    if(d<140){
+      const f=(1-d/140)*6;
+      p.vx+=(p.x-cx)/d*f||0;
+      p.vy+=(p.y-cy)/d*f||0;
+      p.exploding=true;
+    }
+  }
+}
+
+/***********************
+ * VIDEO FLOW
+ ***********************/
+async function playRandom(){
+  playing=true;
+  velX=velY=0;
+  setTimeout(()=>fade(1),200);
+  try{
+    const res=await fetch(API);
+    const data=await res.json();
+    if(!data.ok||!data.url){reset();return;}
+    setTimeout(()=>playVideo(data.url),420);
+  }catch{reset();}
+}
+
+function playVideo(url){
+  const vid=document.createElement("video");
+  currentVideo=vid;
+  vid.src=url;
+  vid.muted=true;
+  vid.autoplay=true;
+  vid.playsInline=true;
+  vid.style.opacity=0;
+  document.body.appendChild(vid);
+
+  vid.onplaying=()=>{
+    vid.style.opacity=1;
+    setTimeout(()=>vid.muted=false,200);
+  };
+
+  vid.addEventListener("pointerdown", exitVideo);
+  vid.onended=exitVideo;
+  vid.onerror=exitVideo;
+}
+
+function exitVideo(){
+  if(!currentVideo) return;
+  fade(1);
+  currentVideo.style.opacity=0;
+  setTimeout(()=>{
+    currentVideo.pause();
+    currentVideo.remove();
+    currentVideo=null;
+    reset();
+  },350);
+}
+
+/***********************
+ * HELPERS
+ ***********************/
+function fade(v){ document.getElementById("fade").style.opacity=v; }
+function reset(){
+  fade(0);
+  playing=false;
+  uploading=false;
+  audioLevel=0;
+  camX=camY=velX=velY=0;
+  createParticles();
 }
 </script>
 
