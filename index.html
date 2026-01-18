@@ -44,7 +44,7 @@ video{
 const API = "/api/random";
 
 /***********************
- * AUDIO (FIXED)
+ * AUDIO (FIXED + PRIMED)
  ***********************/
 let audioCtx = null;
 let analyser = null;
@@ -57,6 +57,24 @@ function unlockAudio(){
   if(audioCtx.state !== "running"){
     audioCtx.resume();
   }
+}
+
+/* 🔊 subtle particle click */
+function playParticleSound(){
+  if(!audioCtx) return;
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.value = 520;     // soft, neutral pitch
+  gain.gain.value = 0.035;       // VERY quiet
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.045);
 }
 
 /***********************
@@ -134,14 +152,15 @@ function draw(){
 draw();
 
 /***********************
- * INTERACTION
+ * INTERACTION (CRITICAL ORDER)
  ***********************/
 let playing=false;
 
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
 
-  unlockAudio(); // 🔓 audio context unlocked here
+  unlockAudio();          // 🔓 unlocks audio
+  playParticleSound();    // 🔊 primes Safari/iOS
 
   const r=canvas.getBoundingClientRect();
   const x=e.clientX-r.left;
@@ -170,7 +189,7 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO + AUDIO (FIXED)
+ * VIDEO + AUDIO
  ***********************/
 async function playRandom(){
   playing=true;
@@ -192,7 +211,7 @@ function playVideo(url){
   vid.preload="auto";
   document.body.appendChild(vid);
 
-  // 🔥 CRITICAL FIX: attach audio graph immediately
+  // audio graph attached immediately
   if(!mediaSource){
     mediaSource = audioCtx.createMediaElementSource(vid);
     analyser = audioCtx.createAnalyser();
