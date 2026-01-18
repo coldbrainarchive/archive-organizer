@@ -138,33 +138,32 @@ function createParticles(){
         // breathing phase
         pulse: Math.random() * Math.PI * 2,
 
-        // very slow, heavy breathing (feels massive)
+        // slow, heavy breathing
         pulseSpeed: 0.0008 + Math.random() * 0.0016,
 
-        // BIG brightness swings (very obvious)
-        pulseStrength: 4.5 + Math.random() * 6.5,
+        // 🔥 50% STRONGER brightness swings
+        pulseStrength: 6.75 + Math.random() * 9.75,
 
-        // EXTREME glow baseline — halos overlap
-        glowBoost: 70 + Math.random() * 110,
+        // 🔥 50% MORE baseline glow (halos overlap HARD)
+        glowBoost: 105 + Math.random() * 165,
 
         /* ─────────────────────────────
            🌟 FLARE SYSTEM (HOT + FREQUENT)
         ───────────────────────────── */
 
-        flare: 0, // current flare energy
+        flare: 0,
 
-        // noticeably frequent stellar pops
-        flareChance: 0.0025 + Math.random() * 0.0035,
+        // 🔥 slightly more frequent flares
+        flareChance: 0.0035 + Math.random() * 0.005,
 
-        // slow decay so flares linger
-        flareDecay: 0.86 + Math.random() * 0.05
+        // 🔥 flares linger longer at peak brightness
+        flareDecay: 0.88 + Math.random() * 0.05
       });
     }
   }
 }
 
 createParticles();
-
 /***********************
  * SHOCKWAVES (UPLOAD)
  ***********************/
