@@ -99,9 +99,14 @@ function createParticles(){
         r:(Math.random()*2+1)*d,
         depth:d,
         a:Math.random()*.6+.2,
-        vx:(Math.random()-.5)*.3*d,
-        vy:(Math.random()-.5)*.3*d,
-        exploding:false
+
+        // 🔥 SLOWED DOWN
+        vx:(Math.random()-.5)*0.08*d,
+        vy:(Math.random()-.5)*0.08*d,
+
+        // screen-space cache for hit testing
+        sx:0,
+        sy:0
       });
     }
   }
@@ -109,20 +114,18 @@ function createParticles(){
 createParticles();
 
 /***********************
- * DRAW LOOP (INFINITE TILE)
+ * DRAW LOOP
  ***********************/
 function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
 
-  // inertia + decay
   camX+=velX;
   camY+=velY;
   velX*=0.92;
   velY*=0.92;
 
-  // zoom + rotation smoothing
-  zoom+= (targetZoom-zoom)*0.1;
+  zoom+=(targetZoom-zoom)*0.1;
   rotation+=rotVel;
   rotVel*=0.95;
 
@@ -153,9 +156,13 @@ function drawTile(offX,offY){
 
     if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
 
+    // 🔑 cache screen position for hit test
+    p.sx = sx;
+    p.sy = sy;
+
     const pulse=audioLevel*4*p.depth;
     ctx.beginPath();
-    ctx.arc(sx,sy,(p.r+pulse),0,Math.PI*2);
+    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
@@ -183,9 +190,9 @@ canvas.addEventListener("pointerdown",e=>{
 
 addEventListener("pointermove",e=>{
   if(!dragging||playing) return;
-  velX -= (e.clientX-lastX)*0.04;
-  velY -= (e.clientY-lastY)*0.04;
-  rotVel += (e.clientX-lastX)*0.00002;
+  velX -= (e.clientX-lastX)*0.03;
+  velY -= (e.clientY-lastY)*0.03;
+  rotVel += (e.clientX-lastX)*0.000015;
   lastX=e.clientX;
   lastY=e.clientY;
 });
@@ -196,10 +203,10 @@ addEventListener("pointercancel",()=>dragging=false);
 addEventListener("wheel",e=>{
   if(playing) return;
   if(e.ctrlKey){
-    targetZoom=Math.min(2,Math.max(0.5,targetZoom-e.deltaY*0.001));
+    targetZoom=Math.min(2,Math.max(0.6,targetZoom-e.deltaY*0.001));
   }else{
-    velX+=e.deltaX*0.01;
-    velY+=e.deltaY*0.01;
+    velX+=e.deltaX*0.008;
+    velY+=e.deltaY*0.008;
   }
 },{passive:true});
 
@@ -208,10 +215,8 @@ addEventListener("wheel",e=>{
  ***********************/
 if(window.DeviceOrientationEvent){
   window.addEventListener("deviceorientation",e=>{
-    gyroX=(e.gamma||0)*0.03;
-    gyroY=(e.beta||0)*0.03;
-    velX+=gyroX;
-    velY+=gyroY;
+    velX+=(e.gamma||0)*0.02;
+    velY+=(e.beta||0)*0.02;
   });
 }
 
@@ -225,11 +230,17 @@ canvas.addEventListener("click",e=>{
   if(playing) return;
   unlockAudio();
 
-  const x=(e.clientX-W/2)/zoom+camX;
-  const y=(e.clientY-H/2)/zoom+camY;
+  const mx=e.clientX;
+  const my=e.clientY;
 
-  if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
-    explode(x,y);
+  const hit=particles.find(p=>{
+    const dx=mx-p.sx;
+    const dy=my-p.sy;
+    return Math.hypot(dx,dy)<=p.r+8;
+  });
+
+  if(hit){
+    explode(hit.x,hit.y);
     playRandom();
   }
 });
