@@ -108,7 +108,7 @@ function createParticles(){
       created++;
 
       const baseRadius = isUpload
-        ? (Math.random()*6 + 8)   // 🔥 larger hollow rings
+        ? (Math.random()*6 + 8)
         : (Math.random()*2 + 1);
 
       particles.push({
@@ -183,7 +183,6 @@ function draw(){
     }
   }
 
-  // upload loader (unchanged)
   if(uploading){
     ctx.beginPath();
     ctx.arc(W/2,H/2,18,0,Math.PI*2*uploadProgress);
@@ -308,11 +307,88 @@ function explode(cx,cy){
 }
 
 /***********************
- * VIDEO FLOW (unchanged)
+ * VIDEO FLOW (FIXED)
  ***********************/
-async function playRandom(){ /* unchanged */ }
-function playVideo(url){ /* unchanged */ }
-function exitVideo(){ /* unchanged */ }
+async function playRandom(){
+  playing=true;
+  velX=velY=0;
+  setTimeout(()=>fade(1),200);
+
+  try{
+    const res=await fetch(API);
+    const data=await res.json();
+
+    if(!data.ok || !data.url){
+      reset();
+      return;
+    }
+
+    setTimeout(()=>playVideo(data.url),420);
+  }catch(err){
+    console.error(err);
+    reset();
+  }
+}
+
+function playVideo(url){
+  const vid=document.createElement("video");
+  currentVideo=vid;
+
+  vid.src=url;
+  vid.muted=true;
+  vid.autoplay=true;
+  vid.playsInline=true;
+  vid.style.opacity=0;
+  vid.style.pointerEvents="auto";
+  document.body.appendChild(vid);
+
+  vid.addEventListener("playing",()=>{
+    vid.style.opacity=1;
+    setTimeout(()=>vid.muted=false,200);
+    if(audioReady) attachAudio(vid);
+  });
+
+  vid.addEventListener("pointerdown", exitVideo);
+  vid.onended=exitVideo;
+  vid.onerror=exitVideo;
+}
+
+function exitVideo(){
+  if(!currentVideo) return;
+
+  fade(1);
+  currentVideo.style.opacity=0;
+
+  setTimeout(()=>{
+    currentVideo.pause();
+    currentVideo.remove();
+    currentVideo=null;
+    audioReady=true;
+    reset();
+  },350);
+}
+
+/***********************
+ * AUDIO ANALYSER
+ ***********************/
+function attachAudio(video){
+  if(mediaSource) return;
+
+  mediaSource=audioCtx.createMediaElementSource(video);
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=64;
+
+  mediaSource.connect(analyser);
+  analyser.connect(audioCtx.destination);
+
+  const arr=new Uint8Array(analyser.frequencyBinCount);
+  (function loop(){
+    if(!playing) return;
+    analyser.getByteFrequencyData(arr);
+    audioLevel=arr.reduce((a,b)=>a+b,0)/arr.length/255;
+    requestAnimationFrame(loop);
+  })();
+}
 
 /***********************
  * HELPERS
