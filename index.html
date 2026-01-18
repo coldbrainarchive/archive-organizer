@@ -113,8 +113,9 @@ function createParticles(){
         vx:(Math.random()-.5)*0.25*d,
         vy:(Math.random()-.5)*0.25*d,
         a:isUpload ? 1 : 0.12 + d*0.65,
+        exploding:false,
         isUpload,
-        dead:false          // ✅ allows upload circle to disappear
+        dead:false            // ✅ added
       });
     }
   }
@@ -122,17 +123,12 @@ function createParticles(){
 createParticles();
 
 /***********************
- * SHOCKWAVES (UPLOAD ONLY)
+ * SHOCKWAVES
  ***********************/
 const shockwaves=[];
 
 function addShockwave(x,y){
-  shockwaves.push({
-    x,y,
-    r:0,
-    max:220,
-    alpha:1
-  });
+  shockwaves.push({ x,y,r:0,max:220,alpha:1 });
 }
 
 /***********************
@@ -156,7 +152,7 @@ function draw(){
   const fw=W*2, fh=H*2;
 
   for(const p of particles){
-    if(p.dead) continue; // ✅ hide tapped upload circles
+    if(p.dead) continue; // ✅ hide upload circle after tap
 
     p.x+=p.vx;
     p.y+=p.vy;
@@ -199,7 +195,7 @@ function draw(){
 
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
-    ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`;   // ✅ white
+    ctx.strokeStyle=`rgba(255,255,255,${s.alpha})`; // ✅ white
     ctx.lineWidth=2;
     ctx.shadowBlur=30;
     ctx.shadowColor="rgba(255,255,255,1)";
@@ -270,11 +266,11 @@ canvas.addEventListener("click",e=>{
 
     if(Math.hypot(mx-sx,my-sy)<=p.r+12){
       if(p.isUpload){
-        p.dead = true;               // ✅ disappear
-        addShockwave(sx,sy);         // ✅ white shockwave
-        setTimeout(openCamera,500);  // ✅ delay camera
+        p.dead = true;                // ✅ disappear
+        addShockwave(sx,sy);          // ✅ white shockwave
+        setTimeout(openCamera,500);   // ✅ delay camera
       }else{
-        explode(p.x,p.y);            // ✅ normal particles unchanged
+        explode(p.x,p.y);
         playRandom();
       }
       break;
@@ -288,24 +284,6 @@ canvas.addEventListener("click",e=>{
 function openCamera(){
   uploader.value="";
   uploader.click();
-}
-
-/***********************
- * NORMAL PARTICLE FUNCTIONS (UNCHANGED)
- ***********************/
-function explode(cx,cy){
-  for(const p of particles){
-    const d=Math.hypot(p.x-cx,p.y-cy);
-    if(d<140){
-      const f=(1-d/140)*6;
-      p.vx+=(p.x-cx)/d*f||0;
-      p.vy+=(p.y-cy)/d*f||0;
-    }
-  }
-}
-
-async function playRandom(){
-  console.log("Normal particle clicked");
 }
 </script>
 
