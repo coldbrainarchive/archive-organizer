@@ -44,7 +44,7 @@ video{
 const API = "/api/random";
 
 /***********************
- * AUDIO (FIXED)
+ * AUDIO (CORRECT + SAFE)
  ***********************/
 let audioCtx = null;
 let analyser = null;
@@ -141,7 +141,7 @@ let playing=false;
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
 
-  unlockAudio(); // 🔓 audio context unlocked here
+  unlockAudio(); // 🔓 MUST happen on user gesture
 
   const r=canvas.getBoundingClientRect();
   const x=e.clientX-r.left;
@@ -187,12 +187,12 @@ function playVideo(url){
   const vid=document.createElement("video");
   vid.src=url;
   vid.muted=true;
-  vid.autoplay=true;
+  vid.autoplay=false;      // ❗ DO NOT autoplay
   vid.playsInline=true;
   vid.preload="auto";
   document.body.appendChild(vid);
 
-  // 🔥 CRITICAL FIX: attach audio graph immediately
+  // ✅ Attach audio graph BEFORE playback
   if(!mediaSource){
     mediaSource = audioCtx.createMediaElementSource(vid);
     analyser = audioCtx.createAnalyser();
@@ -201,6 +201,9 @@ function playVideo(url){
     mediaSource.connect(analyser);
     analyser.connect(audioCtx.destination);
   }
+
+  // ✅ Manual play (gesture-safe)
+  vid.play().catch(()=>{});
 
   vid.addEventListener("playing",()=>{
     vid.muted=false;
