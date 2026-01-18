@@ -179,7 +179,7 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
- * DRAW LOOP — TRUE BLOOM
+ * DRAW LOOP — TRUE BLOOM ×2
  ***********************/
 function draw(){
   ctx.clearRect(0, 0, W, H);
@@ -217,56 +217,65 @@ function draw(){
     const sx = rx - fw/2 + W/2;
     const sy = ry - fh/2 + H/2;
 
-    if(sx < -200 || sx > W + 200 || sy < -200 || sy > H + 200) continue;
+    if(sx < -300 || sx > W + 300 || sy < -300 || sy > H + 300) continue;
 
     /* ─────────────────────────────
        ✨ LIFE / BLOOM ENERGY UPDATE
     ───────────────────────────── */
     p.pulse += p.pulseSpeed;
 
-    // flare ignition
     if(Math.random() < p.flareChance){
-      p.flare = 1.5 + Math.random() * 2.5;
+      p.flare = 2 + Math.random() * 4;
     }
     p.flare *= p.flareDecay;
 
     const life =
       1 +
       Math.sin(p.pulse) * p.pulseStrength +
-      p.flare * 6;
+      p.flare * 8;
 
-    const depthBoost = 0.6 + p.depth * 1.4;
-    const glow = p.glowBoost * life * depthBoost;
+    const depthBoost = 0.7 + p.depth * 1.6;
+
+    // 🔥🔥 DOUBLE ENERGY
+    const glow = p.glowBoost * life * depthBoost * 2;
 
     /* ─────────────────────────────
-       🌈 BLOOM PASSES (STACKED)
+       🌈 BLOOM PASSES (×2 STACK)
     ───────────────────────────── */
 
-    // 1️⃣ FAR AURA (huge soft halo)
-    ctx.shadowBlur = glow * 2.2;
-    ctx.shadowColor = "rgba(255,255,255,0.12)";
+    // 0️⃣ MASSIVE ATMOSPHERIC BLOOM (NEW)
+    ctx.shadowBlur = glow * 3.8;
+    ctx.shadowColor = "rgba(255,255,255,0.08)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.6, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.02)";
+    ctx.arc(sx, sy, p.r * 2.4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.015)";
+    ctx.fill();
+
+    // 1️⃣ FAR AURA (huge soft halo)
+    ctx.shadowBlur = glow * 2.6;
+    ctx.shadowColor = "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r * 1.9, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
     ctx.fill();
 
     // 2️⃣ MID HALO
-    ctx.shadowBlur = glow * 1.2;
-    ctx.shadowColor = "rgba(255,255,255,0.35)";
+    ctx.shadowBlur = glow * 1.6;
+    ctx.shadowColor = "rgba(255,255,255,0.45)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.2, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    ctx.arc(sx, sy, p.r * 1.4, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fill();
 
     // 3️⃣ CORE LIGHT
-    ctx.shadowBlur = glow * 0.5;
+    ctx.shadowBlur = glow * 0.8;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r, 0, Math.PI * 2);
+    ctx.arc(sx, sy, p.r * 1.05, 0, Math.PI * 2);
 
     if(p.isUpload){
       ctx.strokeStyle = "rgba(255,255,255,1)";
-      ctx.lineWidth = 1.6 + p.depth * 1.4;
+      ctx.lineWidth = 2.2 + p.depth * 1.6;
       ctx.stroke();
     }else{
       ctx.fillStyle = `rgba(255,255,255,${p.a})`;
@@ -275,6 +284,35 @@ function draw(){
 
     ctx.shadowBlur = 0;
   }
+
+  /* ─────────────────────────────
+     💥 SHOCKWAVES (OVERDRIVEN)
+  ───────────────────────────── */
+  for(let i = shockwaves.length - 1; i >= 0; i--){
+    const s = shockwaves[i];
+    s.r += 10;
+    s.alpha *= 0.92;
+
+    if(s.r > s.max || s.alpha < 0.02){
+      shockwaves.splice(i, 1);
+      continue;
+    }
+
+    ctx.shadowBlur = 120;
+    ctx.shadowColor = "rgba(255,255,255,1)";
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${s.alpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+  requestAnimationFrame(draw);
+}
+
+draw();
 
   /* ─────────────────────────────
      💥 SHOCKWAVES (BLOOMED)
