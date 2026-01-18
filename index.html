@@ -107,50 +107,57 @@ function createParticles(){
         : (Math.random() * 2 + 1);
 
       particles.push({
-        // position
+        /* ─────────────
+           POSITION
+        ───────────── */
         x: Math.random() * W * 2,
         y: Math.random() * H * 2,
 
-        // depth & size
+        /* ─────────────
+           DEPTH & SIZE
+        ───────────── */
         depth: d,
         r: baseRadius * d,
 
-        // motion
+        /* ─────────────
+           MOTION
+        ───────────── */
         vx: (Math.random() - 0.5) * 0.25 * d,
         vy: (Math.random() - 0.5) * 0.25 * d,
 
-        // base opacity
+        /* ─────────────
+           VISIBILITY
+        ───────────── */
         a: isUpload ? 1 : 0.12 + d * 0.65,
         isUpload,
 
-/* ─────────────────────────────
-   ✨ LIFE / GLOW SYSTEM (VISUAL)
-───────────────────────────── */
+        /* ─────────────────────────────
+           ✨ LIFE / GLOW SYSTEM (VISUAL)
+        ───────────────────────────── */
 
-// breathing phase
-pulse: Math.random() * Math.PI * 2,
+        // breathing phase
+        pulse: Math.random() * Math.PI * 2,
 
-// very slow, heavy breathing (feels massive)
-pulseSpeed: 0.0008 + Math.random() * 0.0016,
+        // very slow, heavy breathing (feels massive)
+        pulseSpeed: 0.0008 + Math.random() * 0.0016,
 
-// BIG brightness swings (very obvious)
-pulseStrength: 4.5 + Math.random() * 6.5,
+        // BIG brightness swings (very obvious)
+        pulseStrength: 4.5 + Math.random() * 6.5,
 
-// EXTREME glow baseline — halos overlap
-glowBoost: 70 + Math.random() * 110,
+        // EXTREME glow baseline — halos overlap
+        glowBoost: 70 + Math.random() * 110,
 
-/* ─────────────────────────────
-   🌟 FLARE SYSTEM (LESS RARE, VERY HOT)
-───────────────────────────── */
+        /* ─────────────────────────────
+           🌟 FLARE SYSTEM (HOT + FREQUENT)
+        ───────────────────────────── */
 
-// current flare strength
-flare: 0,
+        flare: 0, // current flare energy
 
-// MUCH more frequent flares
-flareChance: 0.0025 + Math.random() * 0.0035,
+        // noticeably frequent stellar pops
+        flareChance: 0.0025 + Math.random() * 0.0035,
 
-// flare death is visible but not instant
-flareDecay: 0.86 + Math.random() * 0.05
+        // slow decay so flares linger
+        flareDecay: 0.86 + Math.random() * 0.05
       });
     }
   }
