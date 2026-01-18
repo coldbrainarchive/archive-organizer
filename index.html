@@ -148,7 +148,7 @@ function draw(){
     const pulse=audioLevel*4;
     ctx.beginPath();
     ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
-    ctx.fillStyle=rgba(255,255,255,${p.a});
+    ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
   }
 
