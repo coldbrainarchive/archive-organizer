@@ -56,17 +56,14 @@ let audioReady=false;
  ***********************/
 let camX=0, camY=0;
 let velX=0, velY=0;
-let zoom=1;
-let targetZoom=1;
-let rotation=0;
-let rotVel=0;
+let zoom=1, targetZoom=1;
+let rotation=0, rotVel=0;
 
 /***********************
- * INPUT STATE
+ * INPUT
  ***********************/
 let dragging=false;
 let lastX=0,lastY=0;
-let gyroX=0,gyroY=0;
 
 /***********************
  * CANVAS
@@ -83,11 +80,14 @@ addEventListener("resize",resize);
 resize();
 
 /***********************
- * PARTICLES (DEPTH LAYERS)
+ * PARTICLES
  ***********************/
 const DEPTHS=[0.4,0.7,1];
 let particles=[];
 let audioLevel=0;
+
+// 🔑 ALL HIT BOXES LIVE HERE
+let hitTargets=[];
 
 function createParticles(){
   particles=[];
@@ -99,14 +99,8 @@ function createParticles(){
         r:(Math.random()*2+1)*d,
         depth:d,
         a:Math.random()*.6+.2,
-
-        // 🔥 SLOWED DOWN
         vx:(Math.random()-.5)*0.08*d,
-        vy:(Math.random()-.5)*0.08*d,
-
-        // screen-space cache for hit testing
-        sx:0,
-        sy:0
+        vy:(Math.random()-.5)*0.08*d
       });
     }
   }
@@ -119,6 +113,7 @@ createParticles();
 function draw(){
   ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,W,H);
+  hitTargets.length = 0;
 
   camX+=velX;
   camY+=velY;
@@ -154,17 +149,22 @@ function drawTile(offX,offY){
     const sx=(p.x+offX-camX*p.depth);
     const sy=(p.y+offY-camY*p.depth);
 
-    if(sx<-100||sx>W+100||sy<-100||sy>H+100) continue;
-
-    // 🔑 cache screen position for hit test
-    p.sx = sx;
-    p.sy = sy;
+    if(sx<-120||sx>W+120||sy<-120||sy>H+120) continue;
 
     const pulse=audioLevel*4*p.depth;
+    const rr=p.r+pulse;
+
     ctx.beginPath();
-    ctx.arc(sx,sy,p.r+pulse,0,Math.PI*2);
+    ctx.arc(sx,sy,rr,0,Math.PI*2);
     ctx.fillStyle=`rgba(255,255,255,${p.a})`;
     ctx.fill();
+
+    // 🔑 REGISTER EVERY VISIBLE PARTICLE COPY
+    hitTargets.push({
+      sx, sy, r: rr,
+      wx: p.x+offX,
+      wy: p.y+offY
+    });
   }
 }
 
@@ -179,7 +179,7 @@ function unlockAudio(){
 }
 
 /***********************
- * POINTER / SCROLL
+ * CAMERA INPUT
  ***********************/
 canvas.addEventListener("pointerdown",e=>{
   if(playing) return;
@@ -211,16 +211,6 @@ addEventListener("wheel",e=>{
 },{passive:true});
 
 /***********************
- * MOBILE GYRO
- ***********************/
-if(window.DeviceOrientationEvent){
-  window.addEventListener("deviceorientation",e=>{
-    velX+=(e.gamma||0)*0.02;
-    velY+=(e.beta||0)*0.02;
-  });
-}
-
-/***********************
  * INTERACTION (PLAY)
  ***********************/
 let playing=false;
@@ -233,14 +223,13 @@ canvas.addEventListener("click",e=>{
   const mx=e.clientX;
   const my=e.clientY;
 
-  const hit=particles.find(p=>{
-    const dx=mx-p.sx;
-    const dy=my-p.sy;
-    return Math.hypot(dx,dy)<=p.r+8;
+  // 🔥 CHECK AGAINST ALL VISIBLE HIT BOXES
+  const hit = hitTargets.find(h=>{
+    return Math.hypot(mx-h.sx,my-h.sy)<=h.r+6;
   });
 
   if(hit){
-    explode(hit.x,hit.y);
+    explode(hit.wx,hit.wy);
     playRandom();
   }
 });
