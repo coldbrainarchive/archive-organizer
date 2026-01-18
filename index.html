@@ -3,70 +3,156 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Archive</title>
+
 <style>
-html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden;}
-canvas{position:fixed;inset:0;}
-#fade{position:fixed;inset:0;background:#000;opacity:0;transition:.4s;pointer-events:none;}
-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none;}
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  background:#000;
+  overflow:hidden;
+}
+
+canvas{ position:fixed; inset:0; }
+
+#fade{
+  position:fixed;
+  inset:0;
+  background:#000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .4s ease;
+  z-index:5;
+}
+
+video{
+  position:fixed;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:#000;
+  z-index:10;
+  pointer-events:none;
+}
 </style>
 </head>
 
 <body>
+
 <canvas id="c"></canvas>
 <div id="fade"></div>
 
 <script>
 const API = "/api/random";
 
-/* particles (unchanged) */
+/***********************
+ * PARTICLES
+ ***********************/
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 let W,H;
-function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;}
-addEventListener("resize",resize);resize();
 
-const particles=[...Array(90)].map(()=>({
-  x:Math.random()*W,y:Math.random()*H,r:Math.random()*3+1,
-  vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,a:Math.random()*.6+.2
+function resize(){
+  W = canvas.width = innerWidth;
+  H = canvas.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
+
+const particles = Array.from({length:90}, ()=>({
+  x:Math.random()*W,
+  y:Math.random()*H,
+  r:Math.random()*3+1,
+  vx:(Math.random()-.5)*.4,
+  vy:(Math.random()-.5)*.4,
+  a:Math.random()*.6+.2
 }));
 
-(function draw(){
+function draw(){
   ctx.clearRect(0,0,W,H);
   for(const p of particles){
-    p.x+=p.vx;p.y+=p.vy;
-    if(p.x<0)p.x=W;if(p.x>W)p.x=0;
-    if(p.y<0)p.y=H;if(p.y>H)p.y=0;
-    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(255,255,255,${p.a})`;ctx.fill();
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+    if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=rgba(255,255,255,${p.a});
+    ctx.fill();
   }
   requestAnimationFrame(draw);
-})();
+}
+draw();
 
+/***********************
+ * INTERACTION
+ ***********************/
 let playing=false;
-canvas.addEventListener("pointerdown",e=>{
+
+canvas.addEventListener("pointerdown", e=>{
   if(playing) return;
-  const r=canvas.getBoundingClientRect();
-  const x=e.clientX-r.left,y=e.clientY-r.top;
-  if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<p.r+10)) play();
+
+  const r = canvas.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+
+  if(particles.some(p=>Math.hypot(x-p.x,y-p.y)<=p.r+10)){
+    playRandom();
+  }
 });
 
-async function play(){
-  playing=true;fade(1);
-  const res=await fetch(API);
-  const data=await res.json();
-  if(!data.ok) return reset();
-  setTimeout(()=>video(data.url),300);
+/***********************
+ * VIDEO FLOW
+ ***********************/
+async function playRandom(){
+  playing=true;
+  fade(1);
+
+  try{
+    const res = await fetch(API);
+    const data = await res.json();
+
+    if(!data.ok) return reset();
+
+    setTimeout(()=>playVideo(data.url),300);
+
+  }catch(e){
+    console.error(e);
+    reset();
+  }
 }
 
-function video(url){
-  const v=document.createElement("video");
-  v.src=url;v.muted=true;v.autoplay=true;v.playsInline=true;
-  document.body.appendChild(v);
-  v.onended=v.onerror=()=>{v.remove();reset();}
+function playVideo(url){
+  const vid=document.createElement("video");
+
+  vid.src=url;
+  vid.muted=true;            // required for autoplay
+  vid.autoplay=true;
+  vid.playsInline=true;
+  vid.preload="auto";
+
+  document.body.appendChild(vid);
+
+  vid.addEventListener("playing",()=>{
+    setTimeout(()=>vid.muted=false,200);
+  });
+
+  vid.addEventListener("ended",cleanup);
+  vid.addEventListener("error",cleanup);
+
+  const safety=setTimeout(cleanup,30000);
+
+  function cleanup(){
+    clearTimeout(safety);
+    vid.remove();
+    reset();
+  }
 }
 
-function fade(v){document.getElementById("fade").style.opacity=v;}
-function reset(){fade(0);playing=false;}
+function fade(v){ document.getElementById("fade").style.opacity=v; }
+function reset(){ fade(0); playing=false; }
 </script>
+
 </body>
 </html>
