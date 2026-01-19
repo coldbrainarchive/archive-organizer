@@ -5,29 +5,24 @@ export async function onRequest(context) {
   let cursor;
 
   // ─────────────────────────────
-  // List ONLY uploads folder (pagination-safe)
+  // List ALL objects (pagination-safe)
   // ─────────────────────────────
   do {
     const res = await env.ARCHIVE_BUCKET.list({
-      prefix: "uploads/",
       cursor
     });
 
     objects.push(...res.objects);
     cursor = res.truncated ? res.cursor : undefined;
+
   } while (cursor);
 
-  // Only allow real video files
-  const videos = objects.filter(o =>
-    o.key.match(/\.(mp4|webm|mov|m4v)$/i)
-  );
-
-  if (videos.length === 0) {
-    return json({ ok: false, error: "No uploaded videos found" });
+  if (objects.length === 0) {
+    return json({ ok: false, error: "No videos found" });
   }
 
-  // Pick random upload
-  const file = videos[Math.floor(Math.random() * videos.length)];
+  // Pick random file
+  const file = objects[Math.floor(Math.random() * objects.length)];
 
   return json({
     ok: true,
