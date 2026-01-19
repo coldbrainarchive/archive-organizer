@@ -198,7 +198,7 @@ function draw(){
   const time = performance.now();
   const globalBreath =
     0.92 + Math.sin(time * 0.00011) * 0.08;
-  /* ─────────────────────────────
+/* ─────────────────────────────
    🌫️ AMBIENT BACKDROP HAZE
    (subtle, global, non-directional)
 ───────────────────────────── */
@@ -219,6 +219,7 @@ ctx.fillStyle = gradient;
 ctx.fillRect(0, 0, W, H);
 
 ctx.globalCompositeOperation = "lighter";
+  ctx.globalCompositeOperation = "lighter";
 
   for(const p of particles){
     if(p.a <= 0) continue;
