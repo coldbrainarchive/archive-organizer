@@ -582,18 +582,22 @@ function reset(){
   camX=camY=velX=velY=0;
   createParticles();
 }
-async function requestSignedUpload(file) {
+async function uploadVideoToR2(file) {
   const res = await fetch(UPLOAD_API, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      filename: file.name,
-      type: file.type
-    })
+    headers: {
+      "Content-Type": file.type
+    },
+    body: file
   });
 
-  if (!res.ok) throw new Error("Failed to get upload URL");
-  return res.json(); // { uploadUrl, publicUrl }
+  if (!res.ok) {
+    throw new Error("Upload failed");
+  }
+
+  const { publicUrl } = await res.json();
+  return publicUrl;
+}
 }
 
 async function uploadVideoToR2(file) {
