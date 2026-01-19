@@ -86,61 +86,41 @@ addEventListener("resize",resize);
 resize();
 
 /***********************
- * PARTICLES (LEAN BLOOM CORE)
+ * PARTICLES
  ***********************/
-const DEPTHS = [0.45, 0.7, 1];
-let particles = [];
+const DEPTHS=[0.45,0.7,1];
+let particles=[];
 
 function createParticles(){
-  particles = [];
-  const TOTAL = 90;
-  const UPLOAD_COUNT = Math.floor(TOTAL * 0.05);
-  let created = 0;
+  particles=[];
+  const TOTAL=90;
+  const UPLOAD_COUNT=Math.floor(TOTAL*0.05);
+  let created=0;
 
-  for(const depth of DEPTHS){
-    for(let i = 0; i < 30; i++){
-      const isUpload = created < UPLOAD_COUNT;
+  for(const d of DEPTHS){
+    for(let i=0;i<30;i++){
+      const isUpload=created<UPLOAD_COUNT;
       created++;
 
-      const baseRadius = isUpload
-        ? Math.random() * 6 + 8
-        : Math.random() * 2 + 1;
+      const baseRadius=isUpload
+        ? (Math.random()*6+8)
+        : (Math.random()*2+1);
 
       particles.push({
-        // position
-        x: Math.random() * W * 2,
-        y: Math.random() * H * 2,
-
-        // depth + size
-        depth,
-        r: baseRadius * depth,
-
-        // motion
-        vx: (Math.random() - 0.5) * 0.25 * depth,
-        vy: (Math.random() - 0.5) * 0.25 * depth,
-
-        // base visibility
-        a: isUpload ? 1 : 0.12 + depth * 0.65,
-        isUpload,
-
-        // breathing
-        pulse: Math.random() * Math.PI * 2,
-        pulseSpeed: 0.0007 + Math.random() * 0.0012,
-        pulseStrength: 6 + Math.random() * 9,
-
-        // bloom energy
-        glowBoost: 120 + Math.random() * 180,
-
-        // flare system
-        flare: 0,
-        flareChance: 0.004 + Math.random() * 0.005,
-        flareDecay: 0.9 + Math.random() * 0.04
+        x:Math.random()*W*2,
+        y:Math.random()*H*2,
+        depth:d,
+        r:baseRadius*d,
+        vx:(Math.random()-.5)*0.25*d,
+        vy:(Math.random()-.5)*0.25*d,
+        a:isUpload ? 1 : 0.12+d*0.65,
+        isUpload
       });
     }
   }
 }
-
 createParticles();
+
 /***********************
  * SHOCKWAVES (UPLOAD)
  ***********************/
