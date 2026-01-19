@@ -51,6 +51,8 @@ video{
 
 <script>
 const API="/api/random";
+const UPLOAD_API =
+  "https://archive-worker.coldbrainarchive.workers.dev/upload";
 
 /***********************
  * STATE
@@ -475,7 +477,25 @@ function openCamera(){
   uploader.value="";
   uploader.click();
 }
+uploader.addEventListener("change", async () => {
+  const file = uploader.files[0];
+  if (!file) return;
 
+  try {
+    // Upload to R2
+    const videoUrl = await uploadVideoToR2(file);
+
+    // 🎯 Attach this video to a particle
+    const p = particles.find(p => p.isUpload && p.a <= 0);
+    if (p) {
+      p.videoUrl = videoUrl;
+      p.a = 1; // make it visible again
+    }
+
+  } catch (err) {
+    console.error("Upload failed", err);
+  }
+});
 /***********************
  * EXPLOSION
  ***********************/
@@ -551,6 +571,33 @@ function reset(){
   playing=false;
   camX=camY=velX=velY=0;
   createParticles();
+}
+async function requestSignedUpload(file) {
+  const res = await fetch(UPLOAD_API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      filename: file.name,
+      type: file.type
+    })
+  });
+
+  if (!res.ok) throw new Error("Failed to get upload URL");
+  return res.json(); // { uploadUrl, publicUrl }
+}
+
+async function uploadVideoToR2(file) {
+  const { uploadUrl, publicUrl } = await requestSignedUpload(file);
+
+  await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type
+    },
+    body: file
+  });
+
+  return publicUrl;
 }
 </script>
 
