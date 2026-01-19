@@ -4,25 +4,22 @@ export async function onRequest(context) {
   let objects = [];
   let cursor;
 
-  // ─────────────────────────────
-  // List ALL objects (pagination-safe)
-  // ─────────────────────────────
   do {
-    const res = await env.ARCHIVE_BUCKET.list({
-      cursor
-    });
-
+    const res = await env.ARCHIVE_BUCKET.list({ cursor });
     objects.push(...res.objects);
     cursor = res.truncated ? res.cursor : undefined;
-
   } while (cursor);
 
-  if (objects.length === 0) {
-    return json({ ok: false, error: "No videos found" });
+  // ✅ ONLY playable videos (any folder)
+  const videos = objects.filter(o =>
+    o.key.match(/\.(mp4|webm|mov|m4v)$/i)
+  );
+
+  if (videos.length === 0) {
+    return json({ ok: false, error: "No playable videos found" });
   }
 
-  // Pick random file
-  const file = objects[Math.floor(Math.random() * objects.length)];
+  const file = videos[Math.floor(Math.random() * videos.length)];
 
   return json({
     ok: true,
