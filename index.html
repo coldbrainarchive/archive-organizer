@@ -257,23 +257,26 @@ function draw(){
     const exposure =
       0.35 + Math.pow(life, 0.85) * 0.75;
  /* ─────────────────────────────
-   🌫️ INTERSTELLAR DUST FOG (FIXED)
+   🌫️ INTERSTELLAR DUST FOG (VISIBLE)
 ───────────────────────────── */
 
-// draw fog FIRST so bloom lights it
-ctx.shadowBlur = glow * 9.5;
-ctx.shadowColor = `rgba(255,255,255,${0.045 * exposure})`;
+// very wide, very soft volumetric haze
+ctx.shadowBlur = glow * 12;
+
+// tiny blue-white tint gives separation from bloom
+ctx.shadowColor = `rgba(220,230,255,${0.08 * exposure})`;
 
 ctx.beginPath();
 ctx.arc(
   sx,
   sy,
-  p.r * (6.5 + p.depth * 3.2), // ⬅️ much wider than bloom
+  p.r * (9.0 + p.depth * 4.5), // 🚀 MUCH farther reach
   0,
   Math.PI * 2
 );
 
-ctx.fillStyle = `rgba(255,255,255,${0.008 * exposure})`;
+// fog body — still subtle but now perceptible
+ctx.fillStyle = `rgba(210,220,255,${0.015 * exposure})`;
 ctx.fill();
 
     /* ─────────────────────────────
