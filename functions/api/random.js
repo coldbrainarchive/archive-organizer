@@ -1,16 +1,28 @@
 export async function onRequest(context) {
   const { env } = context;
 
-  // List files in R2
-  const list = await env.ARCHIVE_BUCKET.list();
+  let objects = [];
+  let cursor;
 
-  if (!list.objects || list.objects.length === 0) {
+  // ─────────────────────────────
+  // List ALL objects (pagination-safe)
+  // ─────────────────────────────
+  do {
+    const res = await env.ARCHIVE_BUCKET.list({
+      cursor
+    });
+
+    objects.push(...res.objects);
+    cursor = res.truncated ? res.cursor : undefined;
+
+  } while (cursor);
+
+  if (objects.length === 0) {
     return json({ ok: false, error: "No videos found" });
   }
 
   // Pick random file
-  const file =
-    list.objects[Math.floor(Math.random() * list.objects.length)];
+  const file = objects[Math.floor(Math.random() * objects.length)];
 
   return json({
     ok: true,
