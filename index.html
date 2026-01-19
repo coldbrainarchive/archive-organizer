@@ -418,10 +418,18 @@ canvas.addEventListener("click", e => {
     if(Math.hypot(mx - sx, my - sy) <= p.r + 12){
       hit = true;
 
-      if(p.isUpload){
-        addShockwave(sx, sy);
-        p.a = 0;
-        setTimeout(openCamera, 500);
+      if (p.isUpload) {
+  addShockwave(sx, sy);
+
+  if (p.videoUrl) {
+    // ▶ Play uploaded video
+    playVideo(p.videoUrl);
+  } else {
+    // 📤 No video yet → upload flow
+    p.a = 0;
+    setTimeout(openCamera, 500);
+  }
+}
       }else{
         explode(p.x, p.y);
         playRandom();
