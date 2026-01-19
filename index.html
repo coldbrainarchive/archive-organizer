@@ -86,7 +86,7 @@ addEventListener("resize",resize);
 resize();
 
 /***********************
- * PARTICLES
+ * PARTICLES (LEAN BLOOM CORE)
  ***********************/
 const DEPTHS = [0.45, 0.7, 1];
 let particles = [];
@@ -97,68 +97,44 @@ function createParticles(){
   const UPLOAD_COUNT = Math.floor(TOTAL * 0.05);
   let created = 0;
 
-  for(const d of DEPTHS){
+  for(const depth of DEPTHS){
     for(let i = 0; i < 30; i++){
       const isUpload = created < UPLOAD_COUNT;
       created++;
 
       const baseRadius = isUpload
-        ? (Math.random() * 6 + 8)
-        : (Math.random() * 2 + 1);
+        ? Math.random() * 6 + 8
+        : Math.random() * 2 + 1;
 
       particles.push({
-        /* ─────────────
-           POSITION
-        ───────────── */
+        // position
         x: Math.random() * W * 2,
         y: Math.random() * H * 2,
 
-        /* ─────────────
-           DEPTH & SIZE
-        ───────────── */
-        depth: d,
-        r: baseRadius * d,
+        // depth + size
+        depth,
+        r: baseRadius * depth,
 
-        /* ─────────────
-           MOTION
-        ───────────── */
-        vx: (Math.random() - 0.5) * 0.25 * d,
-        vy: (Math.random() - 0.5) * 0.25 * d,
+        // motion
+        vx: (Math.random() - 0.5) * 0.25 * depth,
+        vy: (Math.random() - 0.5) * 0.25 * depth,
 
-        /* ─────────────
-           VISIBILITY
-        ───────────── */
-        a: isUpload ? 1 : 0.12 + d * 0.65,
+        // base visibility
+        a: isUpload ? 1 : 0.12 + depth * 0.65,
         isUpload,
 
-        /* ─────────────────────────────
-           ✨ LIFE / GLOW SYSTEM (BLOOM READY)
-        ───────────────────────────── */
-
-        // breathing phase (used every frame)
+        // breathing
         pulse: Math.random() * Math.PI * 2,
+        pulseSpeed: 0.0007 + Math.random() * 0.0012,
+        pulseStrength: 6 + Math.random() * 9,
 
-        // very slow, massive breathing
-        pulseSpeed: 0.0007 + Math.random() * 0.0014,
+        // bloom energy
+        glowBoost: 120 + Math.random() * 180,
 
-        // huge brightness modulation
-        pulseStrength: 7.5 + Math.random() * 11.5,
-
-        // EXTREME glow baseline (expects additive blending)
-        glowBoost: 130 + Math.random() * 210,
-
-        /* ─────────────────────────────
-           🌟 FLARE SYSTEM (HOT + VISIBLE)
-        ───────────────────────────── */
-
-        // current flare energy
+        // flare system
         flare: 0,
-
-        // frequent stellar flares
-        flareChance: 0.004 + Math.random() * 0.006,
-
-        // slow decay so flares bloom outward
-        flareDecay: 0.90 + Math.random() * 0.04
+        flareChance: 0.004 + Math.random() * 0.005,
+        flareDecay: 0.9 + Math.random() * 0.04
       });
     }
   }
