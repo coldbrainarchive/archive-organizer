@@ -165,6 +165,26 @@ function createParticles(){
 }
 
 createParticles();
+  /***********************
+ * INTERSTELLAR FOG FIELD
+ ***********************/
+const FOG_COUNT = 28;
+let fog = [];
+
+function createFog(){
+  fog = Array.from({ length: FOG_COUNT }, () => ({
+    x: Math.random() * W * 2,
+    y: Math.random() * H * 2,
+    r: 220 + Math.random() * 420,
+    a: 0.035 + Math.random() * 0.05,
+    driftX: (Math.random() - 0.5) * 0.02,
+    driftY: (Math.random() - 0.5) * 0.02,
+    depth: 0.25 + Math.random() * 0.4,
+    phase: Math.random() * Math.PI * 2
+  }));
+}
+
+createFog();
 /***********************
  * SHOCKWAVES (UPLOAD)
  ***********************/
@@ -200,8 +220,41 @@ function draw(){
     0.92 + Math.sin(time * 0.00011) * 0.08;
 
   ctx.globalCompositeOperation = "lighter";
+/* ─────────────────────────────
+   🌫️ INTERSTELLAR FOG VOLUME
+───────────────────────────── */
+ctx.globalCompositeOperation = "lighter";
 
-  for(const p of particles){
+for(const f of fog){
+
+  // slow drift
+  f.phase += 0.0004;
+  f.x += f.driftX;
+  f.y += f.driftY;
+
+  f.x = mod(f.x, fw);
+  f.y = mod(f.y, fh);
+
+  const rx = mod(f.x - camX * f.depth, fw);
+  const ry = mod(f.y - camY * f.depth, fh);
+  const sx = rx - fw/2 + W/2;
+  const sy = ry - fh/2 + H/2;
+
+  if(sx < -600 || sx > W + 600 || sy < -600 || sy > H + 600) continue;
+
+  const breathe = 0.85 + Math.sin(f.phase) * 0.15;
+
+  ctx.shadowBlur = f.r * 0.9;
+  ctx.shadowColor = `rgba(180,200,255,${f.a * breathe})`;
+
+  ctx.beginPath();
+  ctx.arc(sx, sy, f.r * breathe, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(180,200,255,${f.a * 0.35})`;
+  ctx.fill();
+}
+
+ctx.shadowBlur = 0;
+   for(const p of particles){
     if(p.a <= 0) continue;
 
     /* ─────────────
@@ -256,29 +309,7 @@ function draw(){
 
     const exposure =
       0.35 + Math.pow(life, 0.85) * 0.75;
- /* ─────────────────────────────
-   🌫️ INTERSTELLAR DUST FOG (VISIBLE)
-───────────────────────────── */
-
-// very wide, very soft volumetric haze
-ctx.shadowBlur = glow * 12;
-
-// tiny blue-white tint gives separation from bloom
-ctx.shadowColor = `rgba(220,230,255,${0.08 * exposure})`;
-
-ctx.beginPath();
-ctx.arc(
-  sx,
-  sy,
-  p.r * (9.0 + p.depth * 4.5), // 🚀 MUCH farther reach
-  0,
-  Math.PI * 2
-);
-
-// fog body — still subtle but now perceptible
-ctx.fillStyle = `rgba(210,220,255,${0.015 * exposure})`;
-ctx.fill();
-
+ 
     /* ─────────────────────────────
        🌫️ BLOOM PASSES
     ───────────────────────────── */
