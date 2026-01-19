@@ -179,12 +179,11 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
- * DRAW LOOP — LEAN TRUE BLOOM
+ * DRAW LOOP — TRUE BLOOM ×3 (SLOWER BREATHING)
  ***********************/
 function draw(){
   ctx.clearRect(0, 0, W, H);
 
-  // camera inertia
   if(!dragging){
     camX += velX;
     camY += velY;
@@ -193,9 +192,10 @@ function draw(){
   }
 
   const fw = W * 2;
-  const time = performance.now();
+  const fh = H * 2;
 
-  // slow global breathing
+  // 🌬 GLOBAL BREATH — slower + deeper
+  const time = performance.now();
   const globalBreath =
     0.92 + Math.sin(time * 0.00011) * 0.08;
 
@@ -204,66 +204,91 @@ function draw(){
   for(const p of particles){
     if(p.a <= 0) continue;
 
-    // motion
+    /* ─────────────
+       MOTION
+    ───────────── */
     p.x += p.vx;
     p.y += p.vy;
     p.x = mod(p.x, fw);
-    p.y = mod(p.y, fw);
+    p.y = mod(p.y, fh);
 
-    // screen space
     const rx = mod(p.x - camX * p.depth, fw);
-    const ry = mod(p.y - camY * p.depth, fw);
+    const ry = mod(p.y - camY * p.depth, fh);
     const sx = rx - fw/2 + W/2;
-    const sy = ry - fw/2 + H/2;
+    const sy = ry - fh/2 + H/2;
 
-    if(sx < -400 || sx > W + 400 || sy < -400 || sy > H + 400) continue;
+    if(sx < -450 || sx > W + 450 || sy < -450 || sy > H + 450) continue;
 
-    // breathing
-    p.pulse += p.pulseSpeed;
+    /* ─────────────────────────────
+       🫁 BREATHING ENERGY (SLOW)
+    ───────────────────────────── */
+
+    // ⏳ slow pulse advance slightly
+    p.pulse += p.pulseSpeed * 0.72;
 
     if(Math.random() < p.flareChance){
-      p.flare = 2 + Math.random() * 4;
+      p.flare = 2.5 + Math.random() * 4;
     }
     p.flare *= p.flareDecay;
 
-    const breath = 1 + Math.sin(p.pulse) * (p.pulseStrength * 0.6);
-    const life = 1 + Math.tanh((breath + p.flare * 4) * 0.35);
+    const breath =
+      1 + Math.sin(p.pulse) * (p.pulseStrength * 0.6);
+
+    const flareEnergy = p.flare * 4;
+
+    let life = breath + flareEnergy;
+
+    // soft compression (unchanged)
+    life = 1 + Math.tanh(life * 0.35);
 
     const depthBoost = 0.6 + p.depth * 1.8;
+
     const glow =
       p.glowBoost *
       life *
       depthBoost *
       globalBreath *
-      2.1;
+      2.2;
 
+    // 🫁 slower size breathing
     const sizeBreath =
-      1 + Math.sin(p.pulse * 0.7) * 0.04;
+      1 + Math.sin(p.pulse * 0.7) * 0.045;
 
     const exposure =
       0.35 + Math.pow(life, 0.85) * 0.75;
 
-    /* ─────────────
-       BLOOM PASSES
-    ───────────── */
+    /* ─────────────────────────────
+       🌫️ BLOOM PASSES
+    ───────────────────────────── */
 
-    // FAR AURA
-    ctx.shadowBlur = glow * 3.6;
-    ctx.shadowColor = `rgba(255,255,255,${0.18 * exposure})`;
+    ctx.shadowBlur = glow * 5.2;
+    ctx.shadowColor = `rgba(255,255,255,${0.06 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.4 * sizeBreath, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.035 * exposure})`;
+    ctx.arc(sx, sy, p.r * 3.6 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.01 * exposure})`;
     ctx.fill();
 
-    // MID HALO
-    ctx.shadowBlur = glow * 2.0;
-    ctx.shadowColor = `rgba(255,255,255,${0.45 * exposure})`;
+    ctx.shadowBlur = glow * 4.0;
+    ctx.shadowColor = `rgba(255,255,255,${0.12 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 1.6 * sizeBreath, 0, Math.PI * 2);
+    ctx.arc(sx, sy, p.r * 2.8 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.02 * exposure})`;
+    ctx.fill();
+
+    ctx.shadowBlur = glow * 2.8;
+    ctx.shadowColor = `rgba(255,255,255,${0.22 * exposure})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r * 2.1 * sizeBreath, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.045 * exposure})`;
+    ctx.fill();
+
+    ctx.shadowBlur = glow * 1.8;
+    ctx.shadowColor = `rgba(255,255,255,${0.5 * exposure})`;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.r * 1.5 * sizeBreath, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255,255,255,${0.12 * exposure})`;
     ctx.fill();
 
-    // CORE
     ctx.shadowBlur = glow * 0.9;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
@@ -281,7 +306,7 @@ function draw(){
     ctx.shadowBlur = 0;
   }
 
-  // shockwaves unchanged
+  /* SHOCKWAVES — unchanged */
   for(let i = shockwaves.length - 1; i >= 0; i--){
     const s = shockwaves[i];
     s.r += 10;
@@ -292,7 +317,7 @@ function draw(){
       continue;
     }
 
-    ctx.shadowBlur = 140;
+    ctx.shadowBlur = 160;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
