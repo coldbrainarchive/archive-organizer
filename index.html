@@ -598,21 +598,6 @@ async function uploadVideoToR2(file) {
   const { publicUrl } = await res.json();
   return publicUrl;
 }
-}
-
-async function uploadVideoToR2(file) {
-  const { uploadUrl, publicUrl } = await requestSignedUpload(file);
-
-  await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type
-    },
-    body: file
-  });
-
-  return publicUrl;
-}
 </script>
 
 </body>
