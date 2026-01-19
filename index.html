@@ -179,7 +179,7 @@ function addShockwave(x,y){
 function mod(n,m){ return ((n%m)+m)%m; }
 
 /***********************
- * DRAW LOOP — TRUE BLOOM ×3 (SLOWER BREATHING)
+ * DRAW LOOP — TRUE BLOOM (LEAN)
  ***********************/
 function draw(){
   ctx.clearRect(0, 0, W, H);
@@ -192,9 +192,8 @@ function draw(){
   }
 
   const fw = W * 2;
-  const fh = H * 2;
 
-  // 🌬 GLOBAL BREATH — slower + deeper
+  // 🌬 GLOBAL BREATH — unchanged
   const time = performance.now();
   const globalBreath =
     0.92 + Math.sin(time * 0.00011) * 0.08;
@@ -210,20 +209,18 @@ function draw(){
     p.x += p.vx;
     p.y += p.vy;
     p.x = mod(p.x, fw);
-    p.y = mod(p.y, fh);
+    p.y = mod(p.y, fw);
 
     const rx = mod(p.x - camX * p.depth, fw);
-    const ry = mod(p.y - camY * p.depth, fh);
+    const ry = mod(p.y - camY * p.depth, fw);
     const sx = rx - fw/2 + W/2;
-    const sy = ry - fh/2 + H/2;
+    const sy = ry - fw/2 + H/2;
 
     if(sx < -450 || sx > W + 450 || sy < -450 || sy > H + 450) continue;
 
     /* ─────────────────────────────
-       🫁 BREATHING ENERGY (SLOW)
+       🫁 BREATHING ENERGY (UNCHANGED)
     ───────────────────────────── */
-
-    // ⏳ slow pulse advance slightly
     p.pulse += p.pulseSpeed * 0.72;
 
     if(Math.random() < p.flareChance){
@@ -234,11 +231,7 @@ function draw(){
     const breath =
       1 + Math.sin(p.pulse) * (p.pulseStrength * 0.6);
 
-    const flareEnergy = p.flare * 4;
-
-    let life = breath + flareEnergy;
-
-    // soft compression (unchanged)
+    let life = breath + p.flare * 4;
     life = 1 + Math.tanh(life * 0.35);
 
     const depthBoost = 0.6 + p.depth * 1.8;
@@ -250,7 +243,6 @@ function draw(){
       globalBreath *
       2.2;
 
-    // 🫁 slower size breathing
     const sizeBreath =
       1 + Math.sin(p.pulse * 0.7) * 0.045;
 
@@ -258,30 +250,18 @@ function draw(){
       0.35 + Math.pow(life, 0.85) * 0.75;
 
     /* ─────────────────────────────
-       🌫️ BLOOM PASSES
+       🌫️ BLOOM PASSES (LEAN)
     ───────────────────────────── */
 
-    ctx.shadowBlur = glow * 5.2;
-    ctx.shadowColor = `rgba(255,255,255,${0.06 * exposure})`;
-    ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 3.6 * sizeBreath, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.01 * exposure})`;
-    ctx.fill();
-
-    ctx.shadowBlur = glow * 4.0;
-    ctx.shadowColor = `rgba(255,255,255,${0.12 * exposure})`;
-    ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.8 * sizeBreath, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.02 * exposure})`;
-    ctx.fill();
-
-    ctx.shadowBlur = glow * 2.8;
+    // 1️⃣ FAR AURA
+    ctx.shadowBlur = glow * 3.2;
     ctx.shadowColor = `rgba(255,255,255,${0.22 * exposure})`;
     ctx.beginPath();
-    ctx.arc(sx, sy, p.r * 2.1 * sizeBreath, 0, Math.PI * 2);
+    ctx.arc(sx, sy, p.r * 2.2 * sizeBreath, 0, Math.PI * 2);
     ctx.fillStyle = `rgba(255,255,255,${0.045 * exposure})`;
     ctx.fill();
 
+    // 2️⃣ MID HALO
     ctx.shadowBlur = glow * 1.8;
     ctx.shadowColor = `rgba(255,255,255,${0.5 * exposure})`;
     ctx.beginPath();
@@ -289,6 +269,7 @@ function draw(){
     ctx.fillStyle = `rgba(255,255,255,${0.12 * exposure})`;
     ctx.fill();
 
+    // 3️⃣ CORE
     ctx.shadowBlur = glow * 0.9;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
@@ -306,7 +287,9 @@ function draw(){
     ctx.shadowBlur = 0;
   }
 
-  /* SHOCKWAVES — unchanged */
+  /* ─────────────────────────────
+     💥 SHOCKWAVES (UNCHANGED)
+  ───────────────────────────── */
   for(let i = shockwaves.length - 1; i >= 0; i--){
     const s = shockwaves[i];
     s.r += 10;
@@ -317,7 +300,7 @@ function draw(){
       continue;
     }
 
-    ctx.shadowBlur = 160;
+    ctx.shadowBlur = 140;
     ctx.shadowColor = "rgba(255,255,255,1)";
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
