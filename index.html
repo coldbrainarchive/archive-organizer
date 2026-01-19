@@ -47,8 +47,12 @@ video{
 
 <canvas id="c"></canvas>
 <div id="fade"></div>
-<input id="uploader" type="file" accept="video/*">
-
+<input
+  id="uploader"
+  type="file"
+  accept="video/*"
+  capture
+>
 <script>
 const API="/api/random";
 const UPLOAD_API =
