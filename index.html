@@ -256,6 +256,26 @@ function draw(){
 
     const exposure =
       0.35 + Math.pow(life, 0.85) * 0.75;
+  /* ─────────────────────────────
+   🌫️ INTERSTELLAR DUST FOG
+───────────────────────────── */
+
+// ultra-soft volumetric scatter
+ctx.shadowBlur = glow * 6.5;
+ctx.shadowColor = `rgba(255,255,255,${0.03 * exposure})`;
+
+ctx.beginPath();
+ctx.arc(
+  sx,
+  sy,
+  p.r * (3.8 + p.depth * 1.4),
+  0,
+  Math.PI * 2
+);
+
+// almost invisible fill — glow does the work
+ctx.fillStyle = `rgba(255,255,255,${0.004 * exposure})`;
+ctx.fill();
 
     /* ─────────────────────────────
        🌫️ BLOOM PASSES
