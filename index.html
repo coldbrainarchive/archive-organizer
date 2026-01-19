@@ -405,38 +405,40 @@ canvas.addEventListener("click", e => {
   let hit = false;
 
   // ─────────────────────────
-  // 1️⃣ DIRECT PARTICLE HIT
-  // ─────────────────────────
-  for(const p of particles){
-    if(p.a <= 0) continue;
+// 1️⃣ DIRECT PARTICLE HIT
+// ─────────────────────────
+for (const p of particles) {
+  if (p.a <= 0) continue;
 
-    const rx = mod(p.x - camX * p.depth, fw);
-    const ry = mod(p.y - camY * p.depth, fh);
-    const sx = rx - fw/2 + W/2;
-    const sy = ry - fh/2 + H/2;
+  const rx = mod(p.x - camX * p.depth, fw);
+  const ry = mod(p.y - camY * p.depth, fh);
+  const sx = rx - fw / 2 + W / 2;
+  const sy = ry - fh / 2 + H / 2;
 
-    if(Math.hypot(mx - sx, my - sy) <= p.r + 12){
-      hit = true;
+  if (Math.hypot(mx - sx, my - sy) <= p.r + 12) {
+    hit = true;
 
-      if (p.isUpload) {
-  addShockwave(sx, sy);
+    if (p.isUpload) {
+      addShockwave(sx, sy);
 
-  if (p.videoUrl) {
-    // ▶ Play uploaded video
-    playVideo(p.videoUrl);
-  } else {
-    // 📤 No video yet → upload flow
-    p.a = 0;
-    setTimeout(openCamera, 500);
+      if (p.videoUrl) {
+        // ▶ Play uploaded video
+        playVideo(p.videoUrl);
+      } else {
+        // 📤 No video yet → upload flow
+        p.a = 0;
+        setTimeout(openCamera, 500);
+      }
+
+    } else {
+      // 🌌 Normal particle
+      explode(p.x, p.y);
+      playRandom();
+    }
+
+    break;
   }
 }
-      }else{
-        explode(p.x, p.y);
-        playRandom();
-      }
-      break;
-    }
-  }
 
   // ─────────────────────────
   // 2️⃣ WATER RIPPLE (EMPTY SPACE OR NEAR MISS)
